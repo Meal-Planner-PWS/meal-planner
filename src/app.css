@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #f0f7f2;
+  --color-primary-100: #d9ede0;
+  --color-primary-200: #b5dbc3;
+  --color-primary-300: #85c29e;
+  --color-primary-400: #5aa87a;
+  --color-primary-500: #3D6B4F;
+  --color-primary-600: #345a43;
+  --color-primary-700: #2b4938;
+  --color-primary-800: #233b2d;
+  --color-primary-900: #1b2e23;
+  --color-primary-950: #101c15;
+
+  --color-surface: #FAFAF8;
+  --color-surface-card: #FFFFFF;
+  --color-surface-muted: #F3F4F6;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Mobile UX — remove tap highlight flash */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area for bottom nav on notched phones */
+body {
+  background-color: var(--color-surface);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  /* Prevent pull-to-refresh in PWA standalone mode */
+  overscroll-behavior-y: contain;
+}
+
+/* Ensure the app fills the viewport */
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+}

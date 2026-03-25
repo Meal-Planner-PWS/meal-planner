@@ -1,0 +1,29 @@
+{
+  "name": "meal-planner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "vite build && echo '/*    /index.html   200' > dist/_redirects",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
+    "axios": "^1.13.6",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "vite-plugin-pwa": "^1.2.0",
+    "vue": "^3.5.30",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "netlify-cli": "^24.5.1",
+    "tailwindcss": "^4.2.1",
+    "vite": "^8.0.0"
+  }
+}
