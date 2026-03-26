@@ -12,13 +12,19 @@ export function useBarcodeScanner() {
       permissionDenied.value = false
       error.value = null
 
-      // Guard: mediaDevices is undefined on iOS in non-secure contexts
-      // or when camera API is not available
+      // Check if camera API is available (requires HTTPS)
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         permissionDenied.value = true
-        error.value = 'Camera is not available. Make sure you are using HTTPS and have granted camera permission.'
+        error.value = 'no_camera_api'
         return
       }
+
+      // Request camera permission explicitly first — this triggers the browser prompt
+      await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then((stream) => {
+          // Permission granted — stop this temporary stream, @zxing will open its own
+          stream.getTracks().forEach((t) => t.stop())
+        })
 
       // Dynamic import to avoid loading @zxing/browser until needed
       const { BrowserMultiFormatReader } = await import('@zxing/browser')
@@ -41,14 +47,13 @@ export function useBarcodeScanner() {
     } catch (e) {
       scanning.value = false
 
-      // Check for camera permission denied
       if (
         e.name === 'NotAllowedError' ||
         e.message?.includes('Permission') ||
         e.message?.includes('permission')
       ) {
         permissionDenied.value = true
-        error.value = 'Camera access was denied.'
+        error.value = 'denied'
       } else if (
         e.name === 'NotFoundError' ||
         e.message?.includes('Requested device not found')
