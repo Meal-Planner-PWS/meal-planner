@@ -154,8 +154,8 @@ function clearAllHistory() {
       @scan="startScan"
     />
 
-    <!-- Scan button -->
-    <div class="fixed bottom-20 left-0 right-0 px-4 pb-2 z-40">
+    <!-- Scan button — positioned above bottom nav + safe area -->
+    <div class="fixed bottom-24 left-0 right-0 px-4 pb-[env(safe-area-inset-bottom)] z-40">
       <button
         @click="startScan"
         class="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"

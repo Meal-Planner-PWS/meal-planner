@@ -260,7 +260,8 @@ const categories = [
         <label class="block text-sm font-medium text-gray-700 mb-1">Source URL</label>
         <input
           v-model="form.sourceUrl"
-          type="url"
+          type="text"
+          inputmode="url"
           placeholder="https://..."
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
         />

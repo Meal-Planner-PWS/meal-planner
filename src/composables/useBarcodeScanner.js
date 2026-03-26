@@ -12,6 +12,14 @@ export function useBarcodeScanner() {
       permissionDenied.value = false
       error.value = null
 
+      // Guard: mediaDevices is undefined on iOS in non-secure contexts
+      // or when camera API is not available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        permissionDenied.value = true
+        error.value = 'Camera is not available. Make sure you are using HTTPS and have granted camera permission.'
+        return
+      }
+
       // Dynamic import to avoid loading @zxing/browser until needed
       const { BrowserMultiFormatReader } = await import('@zxing/browser')
       reader = new BrowserMultiFormatReader()
