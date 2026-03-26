@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { useSync } from '../composables/useSync'
 
+/** UUID generator with fallback for older browsers lacking crypto.randomUUID */
+function generateId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback: use crypto.getRandomValues which has wider support
+  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) =>
+    (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)
+  )
+}
+
 export const useMealStore = defineStore('meals', {
   state: () => ({
     meals: []
@@ -60,7 +71,7 @@ export const useMealStore = defineStore('meals', {
     addMeal(meal) {
       const now = new Date().toISOString()
       const newMeal = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: '',
         category: 'dinner',
         ingredients: [],

@@ -95,31 +95,22 @@ function removePhoto() {
   }
 }
 
-// Temporary debug output visible on screen
-const debugMsg = ref('')
-
 function save() {
   nameError.value = false
-  debugMsg.value = 'save() called...'
 
   if (!form.value.name.trim()) {
     nameError.value = true
-    debugMsg.value = 'BLOCKED: name is empty'
     document.getElementById('meal-name-input')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return
   }
 
-  debugMsg.value = `name="${form.value.name}", adding meal...`
-
   try {
     if (isEdit.value) {
       mealStore.updateMeal(route.params.id, { ...form.value })
-      debugMsg.value = 'updated, navigating...'
       router.push(`/library/${route.params.id}`)
     } else {
       const meal = { ...form.value }
       mealStore.addMeal(meal)
-      debugMsg.value = `added (${mealStore.meals.length} total), navigating...`
 
       if (plannerDay && plannerSlot) {
         const newMeal = mealStore.meals[mealStore.meals.length - 1]
@@ -130,17 +121,14 @@ function save() {
       }
     }
   } catch (err) {
-    debugMsg.value = `ERROR: ${err.message}`
-    // Still navigate even if sync queue fails
-    setTimeout(() => {
-      if (isEdit.value) {
-        router.push(`/library/${route.params.id}`)
-      } else if (plannerDay && plannerSlot) {
-        router.push('/planner')
-      } else {
-        router.push('/library')
-      }
-    }, 3000) // delay so you can read the error
+    console.error('[MealForm] save failed:', err)
+    if (isEdit.value) {
+      router.push(`/library/${route.params.id}`)
+    } else if (plannerDay && plannerSlot) {
+      router.push('/planner')
+    } else {
+      router.push('/library')
+    }
   }
 }
 
@@ -308,11 +296,6 @@ const categories = [
           placeholder="Any extra notes..."
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
         />
-      </div>
-
-      <!-- Debug output — TEMPORARY, remove after testing -->
-      <div v-if="debugMsg" class="bg-yellow-100 border border-yellow-400 rounded-xl p-3 text-xs font-mono text-yellow-800 break-all">
-        {{ debugMsg }}
       </div>
 
       <!-- Submit -->
