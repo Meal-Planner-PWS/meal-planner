@@ -76,11 +76,13 @@ export const usePlannerStore = defineStore('planner', {
 
     /** Build a slot upsert payload for sync */
     _queueSlot(weekStart, day, slotType) {
-      const mealIds = this.weekPlans[weekStart]?.days[day]?.[slotType] || []
-      useSync().queueChange('slot_upsert', {
-        weekStart, day, slotType, mealIds,
-        updatedAt: new Date().toISOString()
-      })
+      try {
+        const mealIds = this.weekPlans[weekStart]?.days[day]?.[slotType] || []
+        useSync().queueChange('slot_upsert', {
+          weekStart, day, slotType, mealIds,
+          updatedAt: new Date().toISOString()
+        })
+      } catch (e) { console.warn('[planner] sync queue failed:', e) }
     },
 
     /** Add a meal to a slot (no duplicates) */

@@ -48,7 +48,7 @@ export const useScannerStore = defineStore('scanner', {
         this.scanHistory = this.scanHistory.slice(0, 20)
       }
 
-      useSync().queueChange('scan_upsert', this.scanHistory[0])
+      try { useSync().queueChange('scan_upsert', this.scanHistory[0]) } catch (e) { console.warn('[scanner] sync queue failed:', e) }
     },
 
     /** Look up a barcode — returns cached result or null */
@@ -67,7 +67,7 @@ export const useScannerStore = defineStore('scanner', {
 
     clearHistory() {
       this.scanHistory = []
-      useSync().queueChange('scan_delete_all', {})
+      try { useSync().queueChange('scan_delete_all', {}) } catch (e) { console.warn('[scanner] sync queue failed:', e) }
     },
 
     /** Fetch product from Open Food Facts and classify additives */

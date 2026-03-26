@@ -74,7 +74,7 @@ export const useMealStore = defineStore('meals', {
         ...meal
       }
       this.meals.push(newMeal)
-      useSync().queueChange('meal_upsert', newMeal)
+      try { useSync().queueChange('meal_upsert', newMeal) } catch (e) { console.warn('[meals] sync queue failed:', e) }
     },
 
     updateMeal(id, updates) {
@@ -85,13 +85,13 @@ export const useMealStore = defineStore('meals', {
           ...updates,
           updatedAt: new Date().toISOString()
         }
-        useSync().queueChange('meal_upsert', this.meals[idx])
+        try { useSync().queueChange('meal_upsert', this.meals[idx]) } catch (e) { console.warn('[meals] sync queue failed:', e) }
       }
     },
 
     deleteMeal(id) {
       this.meals = this.meals.filter((m) => m.id !== id)
-      useSync().queueChange('meal_delete', { id })
+      try { useSync().queueChange('meal_delete', { id }) } catch (e) { console.warn('[meals] sync queue failed:', e) }
     },
 
     toggleFavorite(id) {
@@ -99,7 +99,7 @@ export const useMealStore = defineStore('meals', {
       if (meal) {
         meal.isFavorite = !meal.isFavorite
         meal.updatedAt = new Date().toISOString()
-        useSync().queueChange('meal_upsert', meal)
+        try { useSync().queueChange('meal_upsert', meal) } catch (e) { console.warn('[meals] sync queue failed:', e) }
       }
     }
   },
