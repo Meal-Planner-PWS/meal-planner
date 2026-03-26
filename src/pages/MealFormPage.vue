@@ -158,7 +158,7 @@ const categories = [
       <h1 class="text-2xl font-bold text-gray-800">{{ pageTitle }}</h1>
     </div>
 
-    <form @submit.prevent="save" class="space-y-5">
+    <div class="space-y-5">
       <!-- Name -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Meal Name *</label>
@@ -303,11 +303,12 @@ const categories = [
 
       <!-- Submit -->
       <button
-        type="submit"
+        type="button"
+        @click="save"
         class="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-base shadow-sm active:scale-[0.98] transition-transform"
       >
         {{ isEdit ? 'Save Changes' : 'Add Meal' }}
       </button>
-    </form>
+    </div>
   </div>
 </template>
