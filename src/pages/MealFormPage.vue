@@ -136,7 +136,9 @@ const categories = [
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
   { value: 'dinner', label: 'Dinner' },
-  { value: 'snack', label: 'Snack' }
+  { value: 'snack', label: 'Snack' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'drink', label: 'Drink' }
 ]
 </script>
 
@@ -145,7 +147,7 @@ const categories = [
     <!-- Header -->
     <div class="flex items-center gap-3 mb-6">
       <button
-        @click="router.back()"
+        @click="router.push('/library')"
         class="p-2 -m-2 text-gray-500"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

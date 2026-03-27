@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "netlify dev",
     "build": "vite build && echo '/*    /index.html   200' > dist/_redirects",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "merge-recipes": "node scripts/merge-recipes.js",
+    "insert-recipes": "node scripts/insert-recipes.js"
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "axios": "^1.13.6",
+    "dotenv": "^17.3.1",
+    "p-limit": "^7.3.0",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "vite-plugin-pwa": "^1.2.0",

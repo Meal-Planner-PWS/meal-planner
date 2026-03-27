@@ -137,7 +137,7 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
 {
   id: String,            // uuid
   name: String,
-  category: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+  category: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert' | 'drink',
   ingredients: [String],
   instructions: String,
   sourceUrl: String,
@@ -148,6 +148,8 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
   updatedAt: Date
 }
 ```
+
+> **Note:** ~80 recipes were bulk-imported from a physical recipe binder via manual extraction to JSON, then inserted into Turso via a one-time import script.
 
 ### WeekPlan
 ```js
@@ -228,7 +230,7 @@ All stores persist to `localStorage` via Pinia's `pinia-plugin-persistedstate` a
 CREATE TABLE meals (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'dinner',
+  category TEXT NOT NULL DEFAULT 'dinner',        -- breakfast|lunch|dinner|snack|dessert|drink
   ingredients TEXT NOT NULL DEFAULT '[]',       -- JSON array of strings
   instructions TEXT NOT NULL DEFAULT '',
   source_url TEXT NOT NULL DEFAULT '',

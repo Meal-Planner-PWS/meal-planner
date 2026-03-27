@@ -43,7 +43,7 @@ const categoryColors = {
 
       <!-- Back button -->
       <button
-        @click="router.back()"
+        @click="router.push('/library')"
         class="absolute top-4 left-4 bg-black/30 backdrop-blur-sm text-white rounded-full p-2"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

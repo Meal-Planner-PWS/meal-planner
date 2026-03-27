@@ -14,7 +14,9 @@ const categories = [
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
   { value: 'dinner', label: 'Dinner' },
-  { value: 'snack', label: 'Snack' }
+  { value: 'snack', label: 'Snack' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'drink', label: 'Drink' }
 ]
 
 const meals = computed(() => {
