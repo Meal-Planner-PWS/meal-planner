@@ -165,6 +165,20 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
 }
 ```
 
+### Settings
+```js
+{
+  codes: [
+    { letter: String, color: String, label: String }  // e.g. { letter: 'F', color: '#9B59B6', label: 'Purple' }
+  ],
+  assignments: {
+    sunday:    { breakfast: String|null, lunch: String|null, dinner: String|null, snack: String|null },
+    monday:    { ... },
+    // ... one entry per day, value is a code letter or null
+  }
+}
+```
+
 ### ScanHistory
 ```js
 {
@@ -204,6 +218,7 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
 | `usePlannerStore` | Week plans, swap logic, week navigation |
 | `useIdeasStore` | Ingredient input, Spoonacular results, cache |
 | `useScannerStore` | Scan history, OFF API calls, additive lookup |
+| `useSettingsStore` | Meal code definitions and day/slot assignments |
 
 All stores persist to `localStorage` via Pinia's `pinia-plugin-persistedstate` and queue changes for cloud sync via `useSync().queueChange()`.
 
@@ -244,6 +259,11 @@ CREATE TABLE scan_history (
   scanned_at TEXT NOT NULL,
   raw_data TEXT NOT NULL DEFAULT '{}'           -- Full OFF response JSON
 );
+
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL                           -- JSON stringified value
+);
 ```
 
 ### 5b. Netlify Functions
@@ -253,7 +273,8 @@ CREATE TABLE scan_history (
 | `meals.js` | GET, POST, PUT, DELETE | Full CRUD for meals table |
 | `planner.js` | GET, POST, DELETE | Week plan slot management by week_start |
 | `scanner.js` | GET, POST, DELETE | Scan history (last 20, upsert by barcode) |
-| `sync.js` | POST | Batch flush of offline queue (meals + slots + scans in one transaction) |
+| `sync.js` | POST | Batch flush of offline queue (meals + slots + scans + settings in one transaction) |
+| `settings.js` | GET, POST | Read/write meal code settings (codes + assignments) |
 | `init-db.js` | POST | One-time table creation (run manually) |
 
 All functions connect to Turso via `@libsql/client` using `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables.
@@ -301,6 +322,7 @@ netlify/
     ├── meals.js           # Meals CRUD
     ├── planner.js         # Week plan slot management
     ├── scanner.js         # Scan history management
+    ├── settings.js        # Meal code settings (codes + assignments)
     └── sync.js            # Batch offline queue flush
 
 src/
@@ -322,7 +344,8 @@ src/
 │   ├── meals.js
 │   ├── planner.js
 │   ├── ideas.js
-│   └── scanner.js
+│   ├── scanner.js
+│   └── settings.js
 ├── composables/
 │   ├── useSpoonacular.js
 │   ├── useOpenFoodFacts.js

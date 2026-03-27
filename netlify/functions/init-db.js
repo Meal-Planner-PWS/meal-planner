@@ -53,6 +53,10 @@ export async function handler(event) {
         categories_tags TEXT NOT NULL DEFAULT '[]',
         scanned_at TEXT NOT NULL,
         raw_data TEXT NOT NULL DEFAULT '{}'
+      )`,
+      `CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )`
     ])
 

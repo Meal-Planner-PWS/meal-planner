@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useMealStore } from '../../stores/meals'
+import { useSettingsStore } from '../../stores/settings'
 
 const props = defineProps({
   day: { type: String, required: true },
@@ -13,6 +14,7 @@ const props = defineProps({
 const emit = defineEmits(['pick', 'slot-action', 'swap-target', 'remove-meal'])
 
 const mealStore = useMealStore()
+const settingsStore = useSettingsStore()
 
 const meals = computed(() => {
   return props.mealIds
@@ -21,6 +23,19 @@ const meals = computed(() => {
 })
 
 const isEmpty = computed(() => meals.value.length === 0)
+
+const codeForSlot = computed(() => settingsStore.getCodeForSlot(props.day, props.slot))
+
+/** White text on dark backgrounds, dark text on light backgrounds */
+function codeFontColor(bgColor) {
+  if (!bgColor) return '#fff'
+  const hex = bgColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#1f2937' : '#ffffff'
+}
 
 const slotLabels = {
   breakfast: 'Breakfast',
@@ -80,6 +95,15 @@ function handleRemoveMeal(e, mealId) {
         :class="swapMode && !isSwapSource ? 'text-amber-500' : 'text-gray-400'"
       >
         {{ slotLabels[slot] }}
+      </span>
+
+      <!-- Meal code badge -->
+      <span
+        v-if="codeForSlot"
+        class="w-5.5 h-5.5 rounded-full shrink-0 flex items-center justify-center self-center"
+        :style="{ backgroundColor: codeForSlot.color, color: codeFontColor(codeForSlot.color) }"
+      >
+        <span class="text-[11px] font-bold leading-none">{{ codeForSlot.letter }}</span>
       </span>
 
       <!-- Empty slot -->

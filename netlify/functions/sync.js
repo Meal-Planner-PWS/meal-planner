@@ -22,7 +22,7 @@ export async function handler(event) {
   }
 
   try {
-    const { meals = [], plannerSlots = [], scans = [] } = JSON.parse(event.body)
+    const { meals = [], plannerSlots = [], scans = [], settings = [] } = JSON.parse(event.body)
     const statements = []
 
     // Process meal upserts and deletes
@@ -91,6 +91,24 @@ export async function handler(event) {
       }
     }
 
+    // Process settings upserts
+    for (const item of settings) {
+      if (item.action === 'upsert' && item.data) {
+        if (item.data.codes !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['codes', JSON.stringify(item.data.codes)]
+          })
+        }
+        if (item.data.assignments !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['assignments', JSON.stringify(item.data.assignments)]
+          })
+        }
+      }
+    }
+
     if (statements.length > 0) {
       await db.batch(statements)
     }
@@ -103,7 +121,8 @@ export async function handler(event) {
         synced: {
           meals: meals.length,
           plannerSlots: plannerSlots.length,
-          scans: scans.length
+          scans: scans.length,
+          settings: settings.length
         }
       })
     }

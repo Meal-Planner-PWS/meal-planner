@@ -4,6 +4,7 @@ import { usePlannerStore } from '../stores/planner'
 import { useMealStore } from '../stores/meals'
 import DaySection from '../components/planner/DaySection.vue'
 import MealPicker from '../components/planner/MealPicker.vue'
+import MealCodeSettings from '../components/planner/MealCodeSettings.vue'
 
 const plannerStore = usePlannerStore()
 const mealStore = useMealStore()
@@ -112,6 +113,7 @@ function exitSwapMode() {
 
 // --- Copy / Clear week ---
 
+const showSettings = ref(false)
 const showCopyConfirm = ref(false)
 const showClearConfirm = ref(false)
 
@@ -158,6 +160,16 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
     <div class="flex items-center justify-between mb-1" @click.stop>
       <h1 class="text-2xl font-bold text-gray-800">Planner</h1>
       <div class="flex items-center gap-1">
+        <button
+          @click="showSettings = true"
+          class="p-2 text-gray-400 active:text-primary-500"
+          title="Meal code settings"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
         <button
           @click="showCopyConfirm = true"
           class="p-2 text-gray-400 active:text-primary-500"
@@ -235,6 +247,12 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
       />
     </div>
   </div>
+
+  <!-- Meal Code Settings -->
+  <MealCodeSettings
+    v-if="showSettings"
+    @close="showSettings = false"
+  />
 
   <!-- Meal Picker overlay -->
   <MealPicker

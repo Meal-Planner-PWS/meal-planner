@@ -25,22 +25,25 @@ export function useSync() {
     const { useMealStore } = await import('../stores/meals')
     const { usePlannerStore } = await import('../stores/planner')
     const { useScannerStore } = await import('../stores/scanner')
+    const { useSettingsStore } = await import('../stores/settings')
 
     const mealStore = useMealStore()
     const plannerStore = usePlannerStore()
     const scannerStore = useScannerStore()
+    const settingsStore = useSettingsStore()
 
     try {
       // Flush any pending offline changes first so server has latest
       await flushQueue()
 
       // Fetch all data from server in parallel
-      const [mealsRes, plannerRes, scansRes] = await Promise.all([
+      const [mealsRes, plannerRes, scansRes, settingsRes] = await Promise.all([
         axios.get(`${FUNCTIONS_BASE}/meals`).catch(() => ({ data: null })),
         axios.get(`${FUNCTIONS_BASE}/planner`, {
           params: { weekStart: plannerStore.currentWeekStart }
         }).catch(() => ({ data: null })),
-        axios.get(`${FUNCTIONS_BASE}/scanner`).catch(() => ({ data: null }))
+        axios.get(`${FUNCTIONS_BASE}/scanner`).catch(() => ({ data: null })),
+        axios.get(`${FUNCTIONS_BASE}/settings`).catch(() => ({ data: null }))
       ])
 
       // Merge meals — server wins for existing, keep local-only items
@@ -68,6 +71,16 @@ export function useSync() {
         scannerStore.scanHistory = [...scansRes.data, ...localOnly].slice(0, 20)
       }
 
+      // Merge settings — server wins if present
+      if (settingsRes.data && typeof settingsRes.data === 'object') {
+        if (Array.isArray(settingsRes.data.codes) && settingsRes.data.codes.length > 0) {
+          settingsStore.codes = settingsRes.data.codes
+        }
+        if (settingsRes.data.assignments && typeof settingsRes.data.assignments === 'object') {
+          settingsStore.assignments = settingsRes.data.assignments
+        }
+      }
+
       lastSyncError.value = null
     } catch (err) {
       console.warn('[sync] initialSync failed:', err.message)
@@ -77,7 +90,7 @@ export function useSync() {
 
   /**
    * Add a pending change to the localStorage queue.
-   * @param {'meal_upsert'|'meal_delete'|'slot_upsert'|'slot_delete'|'scan_upsert'|'scan_delete_all'} type
+   * @param {'meal_upsert'|'meal_delete'|'slot_upsert'|'slot_delete'|'scan_upsert'|'scan_delete_all'|'settings_upsert'} type
    * @param {Object} data - The data payload for this change
    */
   let flushTimer = null
@@ -109,6 +122,7 @@ export function useSync() {
       const meals = []
       const plannerSlots = []
       const scans = []
+      const settings = []
 
       for (const item of queue) {
         switch (item.type) {
@@ -130,10 +144,13 @@ export function useSync() {
           case 'scan_delete_all':
             scans.push({ action: 'delete_all' })
             break
+          case 'settings_upsert':
+            settings.push({ action: 'upsert', data: item.data })
+            break
         }
       }
 
-      await axios.post(`${FUNCTIONS_BASE}/sync`, { meals, plannerSlots, scans })
+      await axios.post(`${FUNCTIONS_BASE}/sync`, { meals, plannerSlots, scans, settings })
 
       // Clear queue on success
       saveQueue([])
