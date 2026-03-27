@@ -25,6 +25,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (triggers at <16px) */
+input, select, textarea {
+  font-size: 16px;
+}
+
 /* Safe area for bottom nav on notched phones */
 body {
   background-color: var(--color-surface);
