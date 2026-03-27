@@ -35,12 +35,13 @@ export async function handler(event) {
       } else {
         const m = item.data
         statements.push({
-          sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, is_favorite, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, prep_time, is_favorite, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             m.id, m.name || '', m.category || 'dinner',
             JSON.stringify(m.ingredients || []),
             m.instructions || '', m.sourceUrl || '', m.notes || '', m.photo || '',
+            m.prepTime || null,
             m.isFavorite ? 1 : 0,
             m.createdAt || new Date().toISOString(),
             m.updatedAt || new Date().toISOString()
@@ -104,6 +105,18 @@ export async function handler(event) {
           statements.push({
             sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
             args: ['assignments', JSON.stringify(item.data.assignments)]
+          })
+        }
+        if (item.data.flaggedIngredients !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['flagged_ingredients', JSON.stringify(item.data.flaggedIngredients)]
+          })
+        }
+        if (item.data.cleanifyRules !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['cleanify_rules', JSON.stringify(item.data.cleanifyRules)]
           })
         }
       }

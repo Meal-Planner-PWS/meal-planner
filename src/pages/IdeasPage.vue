@@ -12,14 +12,23 @@ const searchDone = ref(false)
 
 const canSearch = computed(() => ideasStore.ingredients.length > 0)
 
-// Detect if we're showing cached results (ingredients changed since last search)
 const showingCached = computed(() => {
   if (!ideasStore.hasResults) return false
   const currentKey = ideasStore.cacheKey
-  // If current results don't match current ingredients, they're from a previous search
   const cachedForCurrent = ideasStore.cachedResults[currentKey]
   return !cachedForCurrent && ideasStore.results.length > 0
 })
+
+const timeOptions = [
+  { value: null, label: 'Any' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '60 min' }
+]
+
+function setTime(value) {
+  ideasStore.setMaxReadyTime(value)
+}
 
 function handleAdd(ingredient) {
   ideasStore.addIngredient(ingredient)
@@ -54,6 +63,24 @@ function closeDetail() {
   <div class="p-4">
     <!-- Header -->
     <h1 class="text-2xl font-bold text-gray-800 mb-4">New Ideas</h1>
+
+    <!-- Max prep time filter -->
+    <div class="mb-3">
+      <label class="block text-xs font-medium text-gray-500 mb-1.5">Max prep time</label>
+      <div class="flex gap-2">
+        <button
+          v-for="opt in timeOptions"
+          :key="opt.label"
+          @click="setTime(opt.value)"
+          class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+          :class="ideasStore.maxReadyTime === opt.value
+            ? 'bg-primary-500 text-white'
+            : 'bg-surface-card text-gray-600 border border-gray-200'"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+    </div>
 
     <!-- Ingredient input -->
     <IngredientInput
@@ -95,14 +122,14 @@ function closeDetail() {
       <p class="text-xs text-amber-600">Showing results from your last search</p>
     </div>
 
-    <!-- Results -->
+    <!-- Results — use sorted order -->
     <div v-if="ideasStore.hasResults && !ideasStore.loading" class="mt-5">
       <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        {{ ideasStore.results.length }} recipes found
+        {{ ideasStore.sortedResults.length }} recipes found
       </h2>
       <div class="grid grid-cols-2 gap-3">
         <RecipeResultCard
-          v-for="recipe in ideasStore.results"
+          v-for="recipe in ideasStore.sortedResults"
           :key="recipe.id"
           :recipe="recipe"
           :total-ingredients="ideasStore.ingredients.length"

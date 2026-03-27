@@ -68,8 +68,8 @@ async function createMeal(meal) {
   }
 
   await db.execute({
-    sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, is_favorite, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, prep_time, is_favorite, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       meal.id,
       meal.name,
@@ -79,6 +79,7 @@ async function createMeal(meal) {
       meal.sourceUrl || '',
       meal.notes || '',
       meal.photo || '',
+      meal.prepTime || null,
       meal.isFavorite ? 1 : 0,
       meal.createdAt || new Date().toISOString(),
       meal.updatedAt || new Date().toISOString()
@@ -94,8 +95,8 @@ async function updateMeal(meal) {
   }
 
   await db.execute({
-    sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, is_favorite, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, prep_time, is_favorite, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       meal.id,
       meal.name || '',
@@ -105,6 +106,7 @@ async function updateMeal(meal) {
       meal.sourceUrl || '',
       meal.notes || '',
       meal.photo || '',
+      meal.prepTime || null,
       meal.isFavorite ? 1 : 0,
       meal.createdAt || new Date().toISOString(),
       meal.updatedAt || new Date().toISOString()
@@ -133,6 +135,7 @@ function rowToMeal(row) {
     sourceUrl: row.source_url,
     notes: row.notes,
     photo: row.photo,
+    prepTime: row.prep_time || null,
     isFavorite: !!row.is_favorite,
     createdAt: row.created_at,
     updatedAt: row.updated_at

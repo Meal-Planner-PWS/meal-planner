@@ -80,6 +80,7 @@ export const useMealStore = defineStore('meals', {
         sourceUrl: '',
         notes: '',
         photo: '',
+        prepTime: null,
         isFavorite: false,
         createdAt: now,
         updatedAt: now,

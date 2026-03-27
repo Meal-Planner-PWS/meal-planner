@@ -25,7 +25,8 @@ const form = ref({
   instructions: '',
   sourceUrl: '',
   notes: '',
-  photo: ''
+  photo: '',
+  prepTime: null
 })
 
 const nameError = ref(false)
@@ -40,7 +41,8 @@ function fillForm(meal) {
     instructions: meal.instructions || '',
     sourceUrl: meal.sourceUrl || '',
     notes: meal.notes || '',
-    photo: meal.photo || ''
+    photo: meal.photo || '',
+    prepTime: meal.prepTime || null
   }
 }
 
@@ -298,6 +300,19 @@ const categories = [
           rows="3"
           placeholder="Any extra notes..."
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
+        />
+      </div>
+
+      <!-- Prep Time -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Prep Time (minutes)</label>
+        <input
+          v-model.number="form.prepTime"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          placeholder="e.g. 30"
+          class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
         />
       </div>
 
