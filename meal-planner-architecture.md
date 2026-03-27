@@ -143,6 +143,7 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
   sourceUrl: String,
   notes: String,
   photo: String,         // base64 or blob URL
+  prepTime: Number|null, // prep/cook time in minutes, from Spoonacular or manual entry
   isFavorite: Boolean,
   createdAt: Date,
   updatedAt: Date
@@ -177,7 +178,9 @@ Each tab is a top-level route. No nested navigation deeper than 2 levels.
     sunday:    { breakfast: String|null, lunch: String|null, dinner: String|null, snack: String|null },
     monday:    { ... },
     // ... one entry per day, value is a code letter or null
-  }
+  },
+  flaggedIngredients: [String],  // user-editable keyword blocklist for ingredient vetting in New Ideas
+  cleanifyRules: [{ from: String, to: String }]  // auto-substitution rules for "Cleanify + Save" in New Ideas
 }
 ```
 
@@ -236,6 +239,7 @@ CREATE TABLE meals (
   source_url TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
   photo TEXT NOT NULL DEFAULT '',
+  prep_time INTEGER,                       -- prep/cook time in minutes (nullable)
   is_favorite INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -355,6 +359,8 @@ src/
 │   └── useSync.js           # Cloud sync lifecycle (Turso via Netlify functions)
 ├── utils/
 │   ├── additiveRisk.js    # Additive classification logic
+│   ├── cleanify.js        # Auto-substitute flagged ingredients with clean alternatives
+│   ├── ingredientVetting.js # Spoonacular recipe ingredient flagging
 │   ├── nutriScore.js      # Nutri-score calculation (optional)
 │   └── dates.js           # Week navigation helpers
 ├── router/

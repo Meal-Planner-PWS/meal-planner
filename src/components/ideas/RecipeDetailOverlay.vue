@@ -1,11 +1,14 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIdeasStore } from '../../stores/ideas'
+import { useSettingsStore } from '../../stores/settings'
+import { cleanifyIngredients } from '../../utils/cleanify'
 
 const emit = defineEmits(['close'])
 const router = useRouter()
 const ideasStore = useIdeasStore()
+const settingsStore = useSettingsStore()
 
 const recipe = computed(() => ideasStore.recipeDetail)
 const loading = computed(() => ideasStore.detailLoading)
@@ -18,7 +21,6 @@ const ingredients = computed(() => {
 const instructions = computed(() => {
   if (!recipe.value) return ''
 
-  // Spoonacular can return analyzedInstructions (structured) or instructions (HTML string)
   if (recipe.value.analyzedInstructions?.length) {
     return recipe.value.analyzedInstructions
       .flatMap((group) => group.steps || [])
@@ -26,7 +28,6 @@ const instructions = computed(() => {
       .join('\n')
   }
 
-  // Fallback: strip HTML tags from the instructions string
   if (recipe.value.instructions) {
     return recipe.value.instructions.replace(/<[^>]*>/g, '\n').replace(/\n{2,}/g, '\n').trim()
   }
@@ -34,19 +35,49 @@ const instructions = computed(() => {
   return ''
 })
 
-function saveToLibrary() {
-  if (!recipe.value) return
+const vetStatus = computed(() => recipe.value?._vetStatus)
+const vetFlagged = computed(() => recipe.value?._vetFlagged || [])
 
-  ideasStore.setPendingRecipe({
+// --- Cleanify flow ---
+const showCleanifySummary = ref(false)
+const cleanifyResult = ref(null)
+
+function buildPendingRecipe(ingredientsList) {
+  return {
     name: recipe.value.title || '',
     category: 'dinner',
-    ingredients: ingredients.value,
+    ingredients: ingredientsList,
     instructions: instructions.value,
     sourceUrl: recipe.value.sourceUrl || recipe.value.spoonacularSourceUrl || '',
     photo: recipe.value.image || '',
-    notes: ''
-  })
+    notes: '',
+    prepTime: recipe.value.readyInMinutes || null
+  }
+}
 
+function saveAsIs() {
+  if (!recipe.value) return
+  ideasStore.setPendingRecipe(buildPendingRecipe(ingredients.value))
+  emit('close')
+  router.push('/library/new')
+}
+
+function startCleanify() {
+  if (!recipe.value) return
+  const result = cleanifyIngredients(ingredients.value, settingsStore.cleanifyRules)
+  cleanifyResult.value = result
+  showCleanifySummary.value = true
+}
+
+function saveCleanified() {
+  if (!cleanifyResult.value) return
+  ideasStore.setPendingRecipe(buildPendingRecipe(cleanifyResult.value.ingredients))
+  emit('close')
+  router.push('/library/new')
+}
+
+function saveOriginalFromSummary() {
+  ideasStore.setPendingRecipe(buildPendingRecipe(ingredients.value))
   emit('close')
   router.push('/library/new')
 }
@@ -64,6 +95,71 @@ function saveToLibrary() {
           <div class="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-3" />
           <p class="text-sm text-gray-400">Loading recipe...</p>
         </div>
+
+        <!-- Cleanify Summary Modal -->
+        <template v-else-if="showCleanifySummary && cleanifyResult">
+          <div class="px-5 pt-5 pb-3 shrink-0">
+            <h2 class="text-lg font-bold text-gray-800">
+              {{ cleanifyResult.substitutions.length > 0 ? 'Cleanified' : 'Already Clean!' }}
+            </h2>
+          </div>
+
+          <div class="flex-1 overflow-y-auto px-5 pb-4">
+            <template v-if="cleanifyResult.substitutions.length > 0">
+              <p class="text-xs text-gray-500 mb-3">These ingredients were swapped:</p>
+              <div class="space-y-2.5">
+                <div
+                  v-for="(sub, idx) in cleanifyResult.substitutions"
+                  :key="idx"
+                  class="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5"
+                >
+                  <div class="flex items-center gap-2 text-sm">
+                    <span class="text-red-400 line-through">{{ sub.rule.from }}</span>
+                    <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                    <span class="text-emerald-700 font-medium">{{ sub.rule.to }}</span>
+                  </div>
+                  <p class="text-[11px] text-gray-400 mt-1 truncate">in: {{ sub.original }}</p>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <p class="text-sm text-gray-500 mt-2">This recipe has no ingredients that match your cleanify rules. No changes needed!</p>
+            </template>
+          </div>
+
+          <div class="shrink-0 px-4 pb-4 pt-2 border-t border-gray-100 pb-[env(safe-area-inset-bottom)] space-y-2">
+            <template v-if="cleanifyResult.substitutions.length > 0">
+              <button
+                @click="saveCleanified"
+                class="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-transform"
+              >
+                Looks good, save it
+              </button>
+              <button
+                @click="saveOriginalFromSummary"
+                class="w-full py-3 bg-surface-muted text-gray-600 rounded-xl font-medium text-sm active:scale-[0.98] transition-transform"
+              >
+                Edit manually instead
+              </button>
+            </template>
+            <template v-else>
+              <button
+                @click="saveAsIs"
+                class="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-transform"
+              >
+                Save to Library
+              </button>
+            </template>
+            <button
+              @click="showCleanifySummary = false"
+              class="w-full py-2 text-gray-400 text-sm font-medium"
+            >
+              Back
+            </button>
+          </div>
+        </template>
 
         <!-- Content -->
         <template v-else-if="recipe">
@@ -86,8 +182,8 @@ function saveToLibrary() {
           <div class="flex-1 overflow-y-auto p-4">
             <h2 class="text-xl font-bold text-gray-800 mb-1">{{ recipe.title }}</h2>
 
-            <!-- Meta -->
-            <div class="flex items-center gap-3 text-xs text-gray-400 mb-4">
+            <!-- Meta row -->
+            <div class="flex items-center gap-3 text-xs text-gray-400 mb-3">
               <span v-if="recipe.readyInMinutes" class="flex items-center gap-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -100,6 +196,35 @@ function saveToLibrary() {
                 </svg>
                 {{ recipe.servings }} servings
               </span>
+            </div>
+
+            <!-- Vet status badge -->
+            <div v-if="vetStatus === 'clean'" class="mb-4">
+              <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Clean Ingredients
+              </span>
+            </div>
+            <div v-else-if="vetStatus === 'review'" class="mb-4">
+              <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <span class="text-xs font-semibold text-amber-700">Ingredients to Review</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="item in vetFlagged"
+                    :key="item"
+                    class="text-[11px] bg-amber-200/60 text-amber-800 px-2 py-0.5 rounded-full capitalize"
+                  >
+                    {{ item }}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <!-- Ingredients -->
@@ -138,13 +263,19 @@ function saveToLibrary() {
             </a>
           </div>
 
-          <!-- Save button -->
-          <div class="shrink-0 px-4 pb-4 pt-2 border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
+          <!-- Save buttons -->
+          <div class="shrink-0 px-4 pb-4 pt-2 border-t border-gray-100 pb-[env(safe-area-inset-bottom)] space-y-2">
             <button
-              @click="saveToLibrary"
-              class="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-transform"
+              @click="startCleanify"
+              class="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-transform"
             >
-              Save to My Library
+              Cleanify + Save
+            </button>
+            <button
+              @click="saveAsIs"
+              class="w-full py-3 bg-surface-muted text-gray-600 rounded-xl font-medium text-sm active:scale-[0.98] transition-transform"
+            >
+              Save as-is
             </button>
           </div>
         </template>
