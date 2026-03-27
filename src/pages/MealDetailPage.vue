@@ -134,7 +134,7 @@ const categoryColors = {
     <Teleport to="body">
       <div
         v-if="showDeleteConfirm"
-        class="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4"
+        class="fixed inset-0 z-60 flex items-end justify-center bg-black/40 p-4"
         @click.self="showDeleteConfirm = false"
       >
         <div class="bg-white rounded-2xl w-full max-w-sm p-5 mb-[env(safe-area-inset-bottom)]">
