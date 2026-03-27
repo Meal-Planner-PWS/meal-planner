@@ -251,6 +251,7 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
   <!-- Meal Code Settings -->
   <MealCodeSettings
     v-if="showSettings"
+    default-tab="codes"
     @close="showSettings = false"
   />
 

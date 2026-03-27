@@ -3,8 +3,19 @@ import { ref, computed } from 'vue'
 import { useSettingsStore } from '../../stores/settings'
 import { KEYWORD_CATEGORIES } from '../../utils/ingredientVetting'
 
+const props = defineProps({
+  defaultTab: { type: String, default: 'codes' }
+})
+
 const emit = defineEmits(['close'])
 const settingsStore = useSettingsStore()
+
+const activeTab = ref(props.defaultTab)
+const TABS = [
+  { key: 'codes', label: 'Meal Codes' },
+  { key: 'ingredients', label: 'Ingredients' },
+  { key: 'cleanify', label: 'Cleanify' }
+]
 
 // --- Flagged ingredients state ---
 const newIngredient = ref('')
@@ -132,8 +143,8 @@ function codeFontColor(bgColor) {
     >
       <div class="bg-white rounded-t-2xl w-full max-w-lg max-h-[85vh] flex flex-col pb-[env(safe-area-inset-bottom)] shadow-xl">
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 class="text-lg font-bold text-gray-800">Meal Codes</h2>
+        <div class="flex items-center justify-between px-5 pt-5 pb-2 shrink-0">
+          <h2 class="text-lg font-bold text-gray-800">Settings</h2>
           <button
             @click="emit('close')"
             class="p-2 -m-2 text-gray-400 active:text-gray-600"
@@ -144,10 +155,25 @@ function codeFontColor(bgColor) {
           </button>
         </div>
 
+        <!-- Tabs -->
+        <div class="flex px-5 pb-3 gap-1 shrink-0">
+          <button
+            v-for="tab in TABS"
+            :key="tab.key"
+            @click="activeTab = tab.key"
+            class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+            :class="activeTab === tab.key
+              ? 'bg-primary-500 text-white'
+              : 'bg-surface-muted text-gray-500'"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+
         <!-- Scrollable content -->
         <div class="overflow-y-auto px-5 pb-5 space-y-6">
-          <!-- Section A: Code Definitions -->
-          <div>
+          <!-- Tab: Meal Codes -->
+          <div v-if="activeTab === 'codes'">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Code Definitions</h3>
             <div class="space-y-3">
               <div
@@ -208,9 +234,8 @@ function codeFontColor(bgColor) {
                 + Add Code
               </button>
             </div>
-          </div>
 
-          <!-- Section B: Weekly Assignment Grid -->
+          <!-- Weekly Assignment Grid -->
           <div>
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Weekly Assignments</h3>
             <div class="overflow-x-auto -mx-2 px-2">
@@ -259,9 +284,10 @@ function codeFontColor(bgColor) {
             </div>
             <p class="text-[10px] text-gray-400 mt-2 text-center">Tap a cell to cycle through codes</p>
           </div>
+          </div>
 
-          <!-- Section C: Flagged Ingredients -->
-          <div>
+          <!-- Tab: Flagged Ingredients -->
+          <div v-if="activeTab === 'ingredients'">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Flagged Ingredients</h3>
             <p class="text-[10px] text-gray-400 mb-3">Recipes containing these ingredients will be marked Review in New Ideas</p>
 
@@ -337,8 +363,8 @@ function codeFontColor(bgColor) {
             </div>
           </div>
 
-          <!-- Section D: Cleanify Rules -->
-          <div>
+          <!-- Tab: Cleanify Rules -->
+          <div v-if="activeTab === 'cleanify'">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Cleanify Rules</h3>
             <p class="text-[10px] text-gray-400 mb-3">When saving a recipe, these ingredients will be automatically swapped</p>
 
