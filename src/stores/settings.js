@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { useSync } from '../composables/useSync'
+import { DEFAULT_FLAGGED_KEYWORDS } from '../utils/ingredientVetting'
+import { DEFAULT_CLEANIFY_RULES } from '../utils/cleanify'
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
@@ -18,7 +20,11 @@ export const useSettingsStore = defineStore('settings', {
       thursday:  { breakfast: 'F', lunch: 'R', dinner: 'F', snack: null },
       friday:    { breakfast: 'R', lunch: 'F', dinner: 'R', snack: null },
       saturday:  { breakfast: 'A', lunch: 'A', dinner: 'A', snack: null }
-    }
+    },
+
+    flaggedIngredients: [...DEFAULT_FLAGGED_KEYWORDS],
+
+    cleanifyRules: DEFAULT_CLEANIFY_RULES.map((r) => ({ ...r }))
   }),
 
   getters: {
@@ -93,11 +99,58 @@ export const useSettingsStore = defineStore('settings', {
       this._syncSettings()
     },
 
+    /** Add a flagged ingredient keyword */
+    addFlaggedIngredient(keyword) {
+      const normalized = keyword.trim().toLowerCase()
+      if (!normalized) return false
+      if (this.flaggedIngredients.includes(normalized)) return false
+      this.flaggedIngredients.push(normalized)
+      this._syncSettings()
+      return true
+    },
+
+    /** Remove a flagged ingredient keyword */
+    removeFlaggedIngredient(keyword) {
+      this.flaggedIngredients = this.flaggedIngredients.filter((k) => k !== keyword)
+      this._syncSettings()
+    },
+
+    /** Reset flagged ingredients to defaults */
+    resetFlaggedIngredients() {
+      this.flaggedIngredients = [...DEFAULT_FLAGGED_KEYWORDS]
+      this._syncSettings()
+    },
+
+    /** Add a cleanify rule */
+    addCleanifyRule(from, to) {
+      const normFrom = from.trim().toLowerCase()
+      const normTo = to.trim().toLowerCase()
+      if (!normFrom || !normTo) return false
+      if (this.cleanifyRules.some((r) => r.from === normFrom)) return false
+      this.cleanifyRules.push({ from: normFrom, to: normTo })
+      this._syncSettings()
+      return true
+    },
+
+    /** Remove a cleanify rule by from value */
+    removeCleanifyRule(from) {
+      this.cleanifyRules = this.cleanifyRules.filter((r) => r.from !== from)
+      this._syncSettings()
+    },
+
+    /** Reset cleanify rules to defaults */
+    resetCleanifyRules() {
+      this.cleanifyRules = DEFAULT_CLEANIFY_RULES.map((r) => ({ ...r }))
+      this._syncSettings()
+    },
+
     _syncSettings() {
       try {
         useSync().queueChange('settings_upsert', {
           codes: this.codes,
-          assignments: this.assignments
+          assignments: this.assignments,
+          flaggedIngredients: this.flaggedIngredients,
+          cleanifyRules: this.cleanifyRules
         })
       } catch (e) {
         console.warn('[settings] sync queue failed:', e)

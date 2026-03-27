@@ -1,8 +1,78 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { useSettingsStore } from '../../stores/settings'
+import { KEYWORD_CATEGORIES } from '../../utils/ingredientVetting'
 
 const emit = defineEmits(['close'])
 const settingsStore = useSettingsStore()
+
+// --- Flagged ingredients state ---
+const newIngredient = ref('')
+const duplicateWarning = ref(false)
+const showResetConfirm = ref(false)
+
+// Build all default keywords into a flat set for category lookup
+const defaultKeywordSet = new Set(Object.values(KEYWORD_CATEGORIES).flat())
+
+// Group flagged ingredients by category for display
+const groupedFlagged = computed(() => {
+  const groups = {}
+  const categoryNames = Object.keys(KEYWORD_CATEGORIES)
+
+  for (const cat of categoryNames) {
+    const items = KEYWORD_CATEGORIES[cat].filter((k) => settingsStore.flaggedIngredients.includes(k))
+    if (items.length > 0) {
+      groups[cat] = items
+    }
+  }
+
+  // User-added keywords that aren't in any default category
+  const other = settingsStore.flaggedIngredients.filter((k) => !defaultKeywordSet.has(k))
+  if (other.length > 0) {
+    groups['Other'] = other
+  }
+
+  return groups
+})
+
+function addIngredient() {
+  duplicateWarning.value = false
+  const val = newIngredient.value.trim().toLowerCase()
+  if (!val) return
+  const added = settingsStore.addFlaggedIngredient(val)
+  if (!added) {
+    duplicateWarning.value = true
+    return
+  }
+  newIngredient.value = ''
+}
+
+function confirmReset() {
+  settingsStore.resetFlaggedIngredients()
+  showResetConfirm.value = false
+}
+
+// --- Cleanify rules state ---
+const newRuleFrom = ref('')
+const newRuleTo = ref('')
+const ruleDuplicateWarning = ref(false)
+const showRuleResetConfirm = ref(false)
+
+function addRule() {
+  ruleDuplicateWarning.value = false
+  const added = settingsStore.addCleanifyRule(newRuleFrom.value, newRuleTo.value)
+  if (!added) {
+    ruleDuplicateWarning.value = true
+    return
+  }
+  newRuleFrom.value = ''
+  newRuleTo.value = ''
+}
+
+function confirmRuleReset() {
+  settingsStore.resetCleanifyRules()
+  showRuleResetConfirm.value = false
+}
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const DAY_LABELS = { sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' }
@@ -188,6 +258,167 @@ function codeFontColor(bgColor) {
               </table>
             </div>
             <p class="text-[10px] text-gray-400 mt-2 text-center">Tap a cell to cycle through codes</p>
+          </div>
+
+          <!-- Section C: Flagged Ingredients -->
+          <div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Flagged Ingredients</h3>
+            <p class="text-[10px] text-gray-400 mb-3">Recipes containing these ingredients will be marked Review in New Ideas</p>
+
+            <!-- Grouped list -->
+            <div class="space-y-3 mb-3">
+              <div v-for="(items, category) in groupedFlagged" :key="category">
+                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-300 mb-1">{{ category }}</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="keyword in items"
+                    :key="keyword"
+                    class="inline-flex items-center gap-1 bg-surface-muted text-gray-600 px-2.5 py-1 rounded-full text-xs"
+                  >
+                    {{ keyword }}
+                    <button
+                      @click="settingsStore.removeFlaggedIngredient(keyword)"
+                      class="text-red-300 active:text-red-500 ml-0.5"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add ingredient input -->
+            <div class="flex gap-2 mb-2">
+              <input
+                v-model="newIngredient"
+                type="text"
+                placeholder="Add ingredient keyword..."
+                class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                @keydown.enter.prevent="addIngredient"
+                @input="duplicateWarning = false"
+              />
+              <button
+                @click="addIngredient"
+                class="px-3 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium shrink-0 active:scale-95 transition-transform"
+              >
+                Add
+              </button>
+            </div>
+            <p v-if="duplicateWarning" class="text-amber-500 text-xs mb-2">Already in list</p>
+
+            <!-- Reset to defaults -->
+            <div class="text-center mt-3">
+              <button
+                v-if="!showResetConfirm"
+                @click="showResetConfirm = true"
+                class="text-xs text-gray-400 active:text-gray-600"
+              >
+                Reset to defaults
+              </button>
+              <div v-else class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <p class="text-xs text-amber-700 mb-2">Reset to default flagged ingredients? This will replace your current list.</p>
+                <div class="flex gap-2 justify-center">
+                  <button
+                    @click="showResetConfirm = false"
+                    class="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    @click="confirmReset"
+                    class="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 rounded-lg"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section D: Cleanify Rules -->
+          <div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Cleanify Rules</h3>
+            <p class="text-[10px] text-gray-400 mb-3">When saving a recipe, these ingredients will be automatically swapped</p>
+
+            <!-- Rules list -->
+            <div class="space-y-1.5 mb-3">
+              <div
+                v-for="rule in settingsStore.cleanifyRules"
+                :key="rule.from"
+                class="flex items-center gap-2 bg-surface-muted rounded-lg px-3 py-2"
+              >
+                <span class="text-xs text-gray-500 truncate">{{ rule.from }}</span>
+                <svg class="w-3 h-3 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <span class="text-xs text-emerald-600 font-medium truncate">{{ rule.to }}</span>
+                <span class="flex-1" />
+                <button
+                  @click="settingsStore.removeCleanifyRule(rule.from)"
+                  class="text-red-300 active:text-red-500 shrink-0 p-0.5"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Add rule inputs -->
+            <div class="flex gap-2 mb-1">
+              <input
+                v-model="newRuleFrom"
+                type="text"
+                placeholder="Replace..."
+                class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                @input="ruleDuplicateWarning = false"
+              />
+              <input
+                v-model="newRuleTo"
+                type="text"
+                placeholder="With..."
+                class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                @keydown.enter.prevent="addRule"
+                @input="ruleDuplicateWarning = false"
+              />
+              <button
+                @click="addRule"
+                class="px-3 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium shrink-0 active:scale-95 transition-transform"
+              >
+                Add
+              </button>
+            </div>
+            <p v-if="ruleDuplicateWarning" class="text-amber-500 text-xs mb-2">Rule already exists for that ingredient</p>
+
+            <!-- Reset to defaults -->
+            <div class="text-center mt-3">
+              <button
+                v-if="!showRuleResetConfirm"
+                @click="showRuleResetConfirm = true"
+                class="text-xs text-gray-400 active:text-gray-600"
+              >
+                Reset to defaults
+              </button>
+              <div v-else class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <p class="text-xs text-amber-700 mb-2">Reset to default cleanify rules? This will replace your current list.</p>
+                <div class="flex gap-2 justify-center">
+                  <button
+                    @click="showRuleResetConfirm = false"
+                    class="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    @click="confirmRuleReset"
+                    class="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 rounded-lg"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

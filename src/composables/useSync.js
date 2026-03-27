@@ -95,6 +95,12 @@ export function useSync() {
         if (settingsRes.data.assignments && typeof settingsRes.data.assignments === 'object') {
           settingsStore.assignments = settingsRes.data.assignments
         }
+        if (Array.isArray(settingsRes.data.flagged_ingredients) && settingsRes.data.flagged_ingredients.length > 0) {
+          settingsStore.flaggedIngredients = settingsRes.data.flagged_ingredients
+        }
+        if (Array.isArray(settingsRes.data.cleanify_rules) && settingsRes.data.cleanify_rules.length > 0) {
+          settingsStore.cleanifyRules = settingsRes.data.cleanify_rules
+        }
       }
 
       lastSyncError.value = null

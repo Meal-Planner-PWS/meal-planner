@@ -61,6 +61,20 @@ async function saveSettings(data) {
     })
   }
 
+  if (data.flaggedIngredients !== undefined) {
+    statements.push({
+      sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      args: ['flagged_ingredients', JSON.stringify(data.flaggedIngredients)]
+    })
+  }
+
+  if (data.cleanifyRules !== undefined) {
+    statements.push({
+      sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      args: ['cleanify_rules', JSON.stringify(data.cleanifyRules)]
+    })
+  }
+
   if (statements.length > 0) {
     await db.batch(statements)
   }
