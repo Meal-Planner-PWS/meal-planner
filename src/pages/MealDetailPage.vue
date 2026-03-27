@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMealStore } from '../stores/meals'
 
@@ -10,6 +10,10 @@ const mealStore = useMealStore()
 const showDeleteConfirm = ref(false)
 
 const meal = computed(() => mealStore.getMealById(route.params.id))
+
+onMounted(() => {
+  mealStore.fetchMealDetail(route.params.id)
+})
 
 function toggleFavorite() {
   mealStore.toggleFavorite(route.params.id)

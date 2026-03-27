@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useSync } from '../composables/useSync'
+import axios from 'axios'
 
 /** UUID generator with fallback for older browsers lacking crypto.randomUUID */
 function generateId() {
@@ -112,6 +113,34 @@ export const useMealStore = defineStore('meals', {
         meal.updatedAt = new Date().toISOString()
         try { useSync().queueChange('meal_upsert', meal) } catch (e) { console.warn('[meals] sync queue failed:', e) }
       }
+    },
+
+    /**
+     * Fetch full meal detail from server and merge into store.
+     * Returns the full meal object, or null if not found.
+     * Skips fetch if local record already has detail fields.
+     */
+    async fetchMealDetail(id) {
+      const existing = this.meals.find((m) => m.id === id)
+      // If we already have detail data locally, no need to fetch
+      if (existing && (existing.ingredients?.length > 0 || existing.instructions)) {
+        return existing
+      }
+      try {
+        const res = await axios.get(`/.netlify/functions/meals?id=${encodeURIComponent(id)}`)
+        if (res.data && res.data.id) {
+          const idx = this.meals.findIndex((m) => m.id === id)
+          if (idx !== -1) {
+            this.meals[idx] = { ...this.meals[idx], ...res.data }
+          } else {
+            this.meals.push(res.data)
+          }
+          return res.data
+        }
+      } catch (e) {
+        console.warn('[meals] fetchMealDetail failed:', e)
+      }
+      return existing || null
     }
   },
 

@@ -32,35 +32,36 @@ const nameError = ref(false)
 const ingredientInput = ref('')
 const photoInput = ref(null)
 
-onMounted(() => {
+function fillForm(meal) {
+  form.value = {
+    name: meal.name || '',
+    category: meal.category || 'dinner',
+    ingredients: [...(meal.ingredients || [])],
+    instructions: meal.instructions || '',
+    sourceUrl: meal.sourceUrl || '',
+    notes: meal.notes || '',
+    photo: meal.photo || ''
+  }
+}
+
+onMounted(async () => {
   if (isEdit.value) {
-    const meal = mealStore.getMealById(route.params.id)
-    if (meal) {
-      form.value = {
-        name: meal.name,
-        category: meal.category,
-        ingredients: [...meal.ingredients],
-        instructions: meal.instructions,
-        sourceUrl: meal.sourceUrl,
-        notes: meal.notes,
-        photo: meal.photo
-      }
-    } else {
+    // Use local data immediately, then fetch full detail from server
+    const local = mealStore.getMealById(route.params.id)
+    if (local) {
+      fillForm(local)
+    }
+    const full = await mealStore.fetchMealDetail(route.params.id)
+    if (full) {
+      fillForm(full)
+    } else if (!local) {
       router.replace('/library')
     }
   } else {
     // Check for pre-filled data from the Ideas "Save to Library" flow
     const pending = ideasStore.consumePendingRecipe()
     if (pending) {
-      form.value = {
-        name: pending.name || '',
-        category: pending.category || 'dinner',
-        ingredients: pending.ingredients || [],
-        instructions: pending.instructions || '',
-        sourceUrl: pending.sourceUrl || '',
-        notes: pending.notes || '',
-        photo: pending.photo || ''
-      }
+      fillForm(pending)
     }
   }
 })

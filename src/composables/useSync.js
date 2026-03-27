@@ -46,11 +46,27 @@ export function useSync() {
         axios.get(`${FUNCTIONS_BASE}/settings`).catch(() => ({ data: null }))
       ])
 
-      // Merge meals — server wins for existing, keep local-only items
+      // Merge meals — server list is lightweight (no ingredients/instructions/notes/sourceUrl).
+      // Merge server fields into existing local records to preserve detail data from localStorage.
       if (Array.isArray(mealsRes.data) && mealsRes.data.length > 0) {
-        const serverMap = new Map(mealsRes.data.map((m) => [m.id, m]))
-        const localOnlyMeals = mealStore.meals.filter((m) => !serverMap.has(m.id))
-        mealStore.meals = [...mealsRes.data, ...localOnlyMeals]
+        const localMap = new Map(mealStore.meals.map((m) => [m.id, m]))
+        const merged = mealsRes.data.map((serverMeal) => {
+          const local = localMap.get(serverMeal.id)
+          if (local) {
+            // Server wins for list fields, preserve local detail fields
+            return { ...local, ...serverMeal }
+          }
+          // New from server — fill in missing detail fields with defaults
+          return {
+            ingredients: [], instructions: '', notes: '', sourceUrl: '',
+            createdAt: serverMeal.updatedAt || new Date().toISOString(),
+            ...serverMeal
+          }
+        })
+        // Keep local-only meals (not yet synced to server)
+        const serverIds = new Set(mealsRes.data.map((m) => m.id))
+        const localOnly = mealStore.meals.filter((m) => !serverIds.has(m.id))
+        mealStore.meals = [...merged, ...localOnly]
       }
 
       // Merge planner slots for current week

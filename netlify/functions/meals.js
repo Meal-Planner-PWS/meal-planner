@@ -19,8 +19,10 @@ export async function handler(event) {
 
   try {
     switch (event.httpMethod) {
-      case 'GET':
-        return await getAllMeals()
+      case 'GET': {
+        const id = event.queryStringParameters?.id
+        return id ? await getMealById(id) : await listMeals()
+      }
       case 'POST':
         return await createMeal(JSON.parse(event.body))
       case 'PUT':
@@ -35,10 +37,29 @@ export async function handler(event) {
   }
 }
 
-async function getAllMeals() {
-  const result = await db.execute('SELECT * FROM meals ORDER BY updated_at DESC')
-  const meals = result.rows.map(rowToMeal)
+/** Lightweight list — only fields needed for Library grid and search */
+async function listMeals() {
+  const result = await db.execute(
+    'SELECT id, name, category, is_favorite, photo, updated_at FROM meals ORDER BY updated_at DESC'
+  )
+  const meals = result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    isFavorite: !!row.is_favorite,
+    photo: row.photo,
+    updatedAt: row.updated_at
+  }))
   return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(meals) }
+}
+
+/** Full single meal with all fields */
+async function getMealById(id) {
+  const result = await db.execute({ sql: 'SELECT * FROM meals WHERE id = ?', args: [id] })
+  if (result.rows.length === 0) {
+    return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Meal not found' }) }
+  }
+  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(rowToMeal(result.rows[0])) }
 }
 
 async function createMeal(meal) {
