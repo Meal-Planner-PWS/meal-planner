@@ -37,17 +37,17 @@ export async function handler(event) {
   }
 }
 
-/** Lightweight list — only fields needed for Library grid and search */
+/** Lightweight list — no photo/ingredients/instructions to stay under 6MB limit */
 async function listMeals() {
   const result = await db.execute(
-    'SELECT id, name, category, is_favorite, photo, updated_at FROM meals ORDER BY updated_at DESC'
+    'SELECT id, name, category, is_favorite, prep_time, updated_at FROM meals ORDER BY updated_at DESC'
   )
   const meals = result.rows.map((row) => ({
     id: row.id,
     name: row.name,
     category: row.category,
     isFavorite: !!row.is_favorite,
-    photo: row.photo,
+    prepTime: row.prep_time || null,
     updatedAt: row.updated_at
   }))
   return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(meals) }

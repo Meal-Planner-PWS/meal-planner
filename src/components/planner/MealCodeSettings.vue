@@ -392,28 +392,31 @@ function codeFontColor(bgColor) {
               </div>
             </div>
 
-            <!-- Add rule inputs -->
-            <div class="flex gap-2 mb-1">
-              <input
-                v-model="newRuleFrom"
-                type="text"
-                placeholder="Replace..."
-                class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
-                @input="ruleDuplicateWarning = false"
-              />
-              <input
-                v-model="newRuleTo"
-                type="text"
-                placeholder="With..."
-                class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
-                @keydown.enter.prevent="addRule"
-                @input="ruleDuplicateWarning = false"
-              />
+            <!-- Add rule inputs — stacked to fit mobile -->
+            <div class="space-y-2 mb-1">
+              <div class="flex gap-2">
+                <input
+                  v-model="newRuleFrom"
+                  type="text"
+                  placeholder="Replace..."
+                  class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                  @input="ruleDuplicateWarning = false"
+                />
+                <span class="text-gray-300 text-xs self-center shrink-0">with</span>
+                <input
+                  v-model="newRuleTo"
+                  type="text"
+                  placeholder="..."
+                  class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                  @keydown.enter.prevent="addRule"
+                  @input="ruleDuplicateWarning = false"
+                />
+              </div>
               <button
                 @click="addRule"
-                class="px-3 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium shrink-0 active:scale-95 transition-transform"
+                class="w-full py-2 bg-primary-500 text-white rounded-lg text-sm font-medium active:scale-[0.98] transition-transform"
               >
-                Add
+                Add Rule
               </button>
             </div>
             <p v-if="ruleDuplicateWarning" class="text-amber-500 text-xs mb-2">Rule already exists for that ingredient</p>
