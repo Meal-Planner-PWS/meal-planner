@@ -46,15 +46,17 @@ export function useSync() {
         axios.get(`${FUNCTIONS_BASE}/settings`).catch(() => ({ data: null }))
       ])
 
-      // Merge meals — server list is lightweight (no ingredients/instructions/notes/sourceUrl).
-      // Merge server fields into existing local records to preserve detail data from localStorage.
+      // Merge meals — server list is lightweight (no ingredients/instructions/notes/sourceUrl,
+      // and photo is empty for base64 uploads). Preserve local detail and base64 photos.
       if (Array.isArray(mealsRes.data) && mealsRes.data.length > 0) {
         const localMap = new Map(mealStore.meals.map((m) => [m.id, m]))
         const merged = mealsRes.data.map((serverMeal) => {
           const local = localMap.get(serverMeal.id)
           if (local) {
-            // Server wins for list fields, preserve local detail fields
-            return { ...local, ...serverMeal }
+            // Server wins for list fields BUT preserve local photo when server photo is empty
+            // (server returns '' for base64 photos to keep payload small)
+            const photo = serverMeal.photo || local.photo || ''
+            return { ...local, ...serverMeal, photo }
           }
           // New from server — fill in missing detail fields with defaults
           return {
