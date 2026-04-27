@@ -3,6 +3,9 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMealStore } from '../../stores/meals'
 import { usePlannerStore } from '../../stores/planner'
+import { useBodyScrollLock } from '../../composables/useBodyScrollLock'
+
+useBodyScrollLock()
 
 const props = defineProps({
   day: { type: String, required: true },

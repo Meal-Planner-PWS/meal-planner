@@ -44,7 +44,12 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  // Reset scroll on every navigation (including back/forward) so pages
+  // always start at the top instead of mid-page.
+  scrollBehavior() {
+    return { top: 0, left: 0 }
+  }
 })
 
 export default router
