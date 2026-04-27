@@ -37,19 +37,24 @@ export async function handler(event) {
   }
 }
 
-/** Lightweight list — no photo/ingredients/instructions to stay under 6MB limit */
+/** Lightweight list — includes photo URLs but excludes base64/data URLs to stay under 6MB */
 async function listMeals() {
   const result = await db.execute(
-    'SELECT id, name, category, is_favorite, prep_time, updated_at FROM meals ORDER BY updated_at DESC'
+    'SELECT id, name, category, is_favorite, prep_time, photo, updated_at FROM meals ORDER BY updated_at DESC'
   )
-  const meals = result.rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    category: row.category,
-    isFavorite: !!row.is_favorite,
-    prepTime: row.prep_time || null,
-    updatedAt: row.updated_at
-  }))
+  const meals = result.rows.map((row) => {
+    // Only include photo if it's a URL — exclude base64/data URLs (too large for list payload)
+    const photo = (row.photo && row.photo.startsWith('http')) ? row.photo : ''
+    return {
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      isFavorite: !!row.is_favorite,
+      prepTime: row.prep_time || null,
+      photo,
+      updatedAt: row.updated_at
+    }
+  })
   return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(meals) }
 }
 

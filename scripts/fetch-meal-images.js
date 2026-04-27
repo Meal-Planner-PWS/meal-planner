@@ -38,13 +38,36 @@ function normalizeName(name) {
   return s.trim()
 }
 
-/** Simple word-overlap confidence score — uses normalized meal name */
+/**
+ * Confidence score — requires the core noun (last word) of the meal name
+ * to ALSO be the core noun of the result title. Otherwise the result is a
+ * different dish type. E.g. "Applesauce" must NOT match "Applesauce Carrot
+ * Cake Muffins" since the result's primary dish is muffins, not applesauce.
+ */
 function confidenceScore(mealName, resultTitle) {
   const normalized = normalizeName(mealName)
   const mealWords = normalized.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean)
-  const resultWords = new Set(resultTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean))
 
-  if (mealWords.length === 0) return 0
+  // Trim trailing modifier phrases from the result title — e.g.
+  // "Sweet Potato Casserole with Pecans" → "Sweet Potato Casserole"
+  // "Pancakes Topped with Berries" → "Pancakes"
+  const cleanedResult = resultTitle.toLowerCase()
+    .replace(/\s+(with|topped with|served with|and|in|on|over|for|by|using|stuffed with|filled with)\s+.*$/i, '')
+    .replace(/[^a-z0-9\s]/g, '')
+  const resultWordsArr = cleanedResult.split(/\s+/).filter(Boolean)
+  const resultWords = new Set(resultWordsArr)
+
+  if (mealWords.length === 0 || resultWordsArr.length === 0) return 0
+
+  // The core noun is the last word — typically the dish type.
+  // Both meal and result must share the same core dish type.
+  const mealNoun = mealWords[mealWords.length - 1]
+  const resultNoun = resultWordsArr[resultWordsArr.length - 1]
+
+  // Allow plural/singular tolerance (cookies <-> cookie, muffins <-> muffin)
+  const stem = (w) => w.replace(/(es|s)$/, '')
+  if (stem(mealNoun) !== stem(resultNoun)) return 0
+
   const matches = mealWords.filter((w) => resultWords.has(w)).length
   return Math.round((matches / mealWords.length) * 100) / 100
 }
@@ -82,9 +105,15 @@ async function main() {
   const allMeals = result.rows
 
   const needsImage = allMeals.filter((m) => !m.photo || m.photo === '')
-  const alreadyHas = allMeals.length - needsImage.length
+  const hasPhoto = allMeals.filter((m) => m.photo && m.photo !== '')
 
-  console.log(`Fetching images for ${allMeals.length} meals (${alreadyHas} already have photos, processing ${needsImage.length})...\n`)
+  console.log(`Fetching images for ${allMeals.length} meals (${hasPhoto.length} already have photos, processing ${needsImage.length})...\n`)
+
+  // Audit log of meals that already have photos
+  for (const m of hasPhoto) {
+    console.log(`[SKIPPED - already has photo] ${m.name}`)
+  }
+  if (hasPhoto.length > 0) console.log('')
 
   const results = []
   let matched = 0
@@ -115,7 +144,7 @@ async function main() {
         const score = confidenceScore(meal.name, best.title)
         const imageUrl = upgradeImageUrl(best.image)
 
-        if (score >= 0.35) {
+        if (score >= 0.6) {
           // Confident match — save to Turso
           await db.execute({
             sql: 'UPDATE meals SET photo = ?, updated_at = ? WHERE id = ?',
