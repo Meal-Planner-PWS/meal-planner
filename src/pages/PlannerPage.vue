@@ -11,6 +11,17 @@ const mealStore = useMealStore()
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
+// True when no meals are planned in any slot for the currently viewed week
+const isEmptyWeek = computed(() => {
+  const days = plannerStore.currentWeek.days
+  for (const day of DAYS) {
+    for (const slot of ['breakfast', 'lunch', 'dinner', 'snack']) {
+      if ((days[day]?.[slot] || []).length > 0) return false
+    }
+  }
+  return true
+})
+
 // --- Week navigation (Sunday-first) ---
 
 function localDateKey(d) {
@@ -204,7 +215,10 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      <span class="text-sm font-semibold text-gray-600">{{ weekLabel }}</span>
+      <div class="flex flex-col items-center">
+        <span class="text-sm font-semibold text-gray-600">{{ weekLabel }}</span>
+        <span class="text-xs italic text-gray-400">You MAKE time.</span>
+      </div>
       <button
         @click="plannerStore.navigateWeek(1)"
         class="p-2 -m-2 text-gray-500 active:text-primary-500"
@@ -232,6 +246,15 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
         Cancel
       </button>
     </div>
+
+    <!-- Empty-week quote -->
+    <p
+      v-if="isEmptyWeek && !swapMode"
+      class="text-center text-sm italic text-gray-400 mb-3"
+      @click.stop
+    >
+      I don't lose things. I place things in locations which later elude me.
+    </p>
 
     <!-- Day sections -->
     <div class="space-y-3" @click.stop>
@@ -337,9 +360,10 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
     >
       <div class="bg-white rounded-2xl w-full max-w-sm p-5 mb-[env(safe-area-inset-bottom)]">
         <h3 class="text-lg font-bold text-gray-800 mb-2">Copy to Next Week?</h3>
-        <p class="text-sm text-gray-500 mb-5">
+        <p class="text-sm text-gray-500 mb-2">
           This will duplicate this week's meal plan into next week. Any existing meals in next week will be overwritten.
         </p>
+        <p class="text-xs italic text-gray-400 mb-5">Food is life.</p>
         <div class="flex gap-3">
           <button
             @click="showCopyConfirm = false"

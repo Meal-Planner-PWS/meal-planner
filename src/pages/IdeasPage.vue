@@ -138,6 +138,9 @@ function closeDetail() {
 
     <!-- Results — use sorted order -->
     <div v-if="ideasStore.hasResults && !ideasStore.loading" class="mt-5">
+      <p class="text-xs italic text-gray-400 mb-1">
+        Well, the plot, unlike your hair, continues to thicken.
+      </p>
       <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
         {{ ideasStore.sortedResults.length }} recipes found
       </h2>
@@ -162,6 +165,7 @@ function closeDetail() {
       </svg>
       <p class="text-gray-400 text-sm font-medium">No recipes found for those ingredients</p>
       <p class="text-gray-300 text-xs mt-1">Try adding more common ingredients or different combinations</p>
+      <p class="text-sm italic text-gray-400 mt-3">I can't help it. My body craves buttery goodness.</p>
     </div>
 
     <!-- Empty state (no search yet) -->
@@ -174,6 +178,7 @@ function closeDetail() {
       </svg>
       <p class="text-gray-400 text-lg font-medium">What's in your kitchen?</p>
       <p class="text-gray-300 text-sm mt-1">Add ingredients above to discover recipes</p>
+      <p class="text-sm italic text-gray-400 mt-3">Are you a fan of delicious flavor?</p>
     </div>
 
     <!-- Loading skeleton -->

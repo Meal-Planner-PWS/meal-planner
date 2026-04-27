@@ -89,6 +89,7 @@ function formatDate(iso) {
       </svg>
       <p class="text-gray-400 text-lg font-medium">No scans yet</p>
       <p class="text-gray-300 text-sm mt-1">Tap the button below to scan a product</p>
+      <p class="text-sm italic text-gray-400 mt-3">I don't lose things. I place things in locations which later elude me.</p>
     </div>
   </div>
 </template>

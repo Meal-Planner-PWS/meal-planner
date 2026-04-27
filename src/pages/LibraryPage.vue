@@ -23,6 +23,9 @@ const meals = computed(() => {
   return mealStore.filteredMeals(search.value, activeCategory.value, favoritesOnly.value)
 })
 
+const hasAnyMeals = computed(() => mealStore.meals.length > 0)
+const hasAnyFavorites = computed(() => mealStore.meals.some((m) => m.isFavorite))
+
 function toggleFavoritesFilter() {
   favoritesOnly.value = !favoritesOnly.value
 }
@@ -88,18 +91,36 @@ function selectCategory(cat) {
       </button>
     </div>
 
+    <!-- Favorites header (when viewing favorites only) -->
+    <p
+      v-if="favoritesOnly && hasAnyFavorites"
+      class="text-sm italic text-gray-400 mb-3"
+    >
+      I can't help it. My body craves buttery goodness.
+    </p>
+
     <!-- Meal Grid -->
     <div v-if="meals.length" class="grid grid-cols-2 gap-3">
       <MealCard v-for="meal in meals" :key="meal.id" :meal="meal" />
     </div>
 
-    <!-- Empty State -->
+    <!-- No search results state — library has meals but none match the filters -->
+    <div v-else-if="hasAnyMeals" class="text-center py-12">
+      <svg class="w-16 h-16 mx-auto text-gray-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <p class="text-gray-400 text-lg font-medium">No meals match</p>
+      <p class="text-sm italic text-gray-400 mt-2">I've heard it both ways.</p>
+    </div>
+
+    <!-- Empty State (no meals at all yet) -->
     <div v-else class="text-center py-12">
       <svg class="w-16 h-16 mx-auto text-gray-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
       </svg>
       <p class="text-gray-400 text-lg font-medium">No meals yet</p>
       <p class="text-gray-300 text-sm mt-1">Tap "Add Meal" to get started</p>
+      <p class="text-sm italic text-gray-400 mt-3">Are you a fan of delicious flavor?</p>
     </div>
   </div>
 </template>

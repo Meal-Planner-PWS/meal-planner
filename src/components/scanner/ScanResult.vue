@@ -101,6 +101,14 @@ const hasMore = computed(() => {
         </div>
       </div>
 
+      <!-- Risk-level quote -->
+      <p v-if="scan.riskLevel === 'safe'" class="text-sm italic text-gray-400 mt-3">
+        Are you a fan of delicious flavor?
+      </p>
+      <p v-else-if="scan.riskLevel === 'moderate' || scan.riskLevel === 'avoid'" class="text-sm italic text-gray-400 mt-3">
+        Did you just kill a guy with an appetizer?
+      </p>
+
       <!-- Flagged additives list -->
       <div v-if="scan.flaggedAdditives?.length" class="mt-4">
         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Flagged Additives</h3>

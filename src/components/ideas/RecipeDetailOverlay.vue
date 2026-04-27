@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { useIdeasStore } from '../../stores/ideas'
 import { useSettingsStore } from '../../stores/settings'
 import { cleanifyIngredients } from '../../utils/cleanify'
+import { useBodyScrollLock } from '../../composables/useBodyScrollLock'
+
+useBodyScrollLock()
 
 const emit = defineEmits(['close'])
 const router = useRouter()
@@ -127,6 +130,7 @@ function saveOriginalFromSummary() {
             <template v-else>
               <p class="text-sm text-gray-500 mt-2">This recipe has no ingredients that match your cleanify rules. No changes needed!</p>
             </template>
+            <p class="text-xs italic text-gray-400 mt-4">Food is life.</p>
           </div>
 
           <div class="shrink-0 px-4 pb-4 pt-2 border-t border-gray-100 pb-[env(safe-area-inset-bottom)] space-y-2">
