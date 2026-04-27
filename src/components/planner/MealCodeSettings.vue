@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import { useSettingsStore } from '../../stores/settings'
 import { KEYWORD_CATEGORIES } from '../../utils/ingredientVetting'
+import { useBodyScrollLock } from '../../composables/useBodyScrollLock'
+
+useBodyScrollLock()
 
 const props = defineProps({
   defaultTab: { type: String, default: 'codes' }
@@ -14,8 +17,28 @@ const activeTab = ref(props.defaultTab)
 const TABS = [
   { key: 'codes', label: 'Meal Codes' },
   { key: 'ingredients', label: 'Ingredients' },
-  { key: 'cleanify', label: 'Cleanify' }
+  { key: 'cleanify', label: 'Cleanify' },
+  { key: 'support', label: 'Support' }
 ]
+
+// --- Support / mailto link ---
+const SUPPORT_EMAIL = 'eric@ericphifer.tech'
+
+const supportMailto = computed(() => {
+  const subject = 'Meal Planner — Feedback'
+  const standalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches
+  const platform = standalone ? 'PWA (standalone)' : 'Browser'
+  const body = [
+    '',
+    '',
+    '— sent from Meal Planner —',
+    `Date: ${new Date().toISOString()}`,
+    `Mode: ${platform}`,
+    `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`,
+    `User Agent: ${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`
+  ].join('\n')
+  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+})
 
 // --- Flagged ingredients state ---
 const newIngredient = ref('')
@@ -289,7 +312,8 @@ function codeFontColor(bgColor) {
           <!-- Tab: Flagged Ingredients -->
           <div v-if="activeTab === 'ingredients'">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Flagged Ingredients</h3>
-            <p class="text-[10px] text-gray-400 mb-3">Recipes containing these ingredients will be marked Review in New Ideas</p>
+            <p class="text-[10px] text-gray-400 mb-1">Recipes containing these ingredients will be marked Review in New Ideas</p>
+            <p class="text-xs italic text-gray-400 mb-3">It does when it's being cooked by a sixty-watt bulb.</p>
 
             <!-- Grouped list -->
             <div class="space-y-3 mb-3">
@@ -366,7 +390,8 @@ function codeFontColor(bgColor) {
           <!-- Tab: Cleanify Rules -->
           <div v-if="activeTab === 'cleanify'">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Cleanify Rules</h3>
-            <p class="text-[10px] text-gray-400 mb-3">When saving a recipe, these ingredients will be automatically swapped</p>
+            <p class="text-[10px] text-gray-400 mb-1">When saving a recipe, these ingredients will be automatically swapped</p>
+            <p class="text-xs italic text-gray-400 mb-3">Did you just kill a guy with an appetizer?</p>
 
             <!-- Rules list -->
             <div class="space-y-1.5 mb-3">
@@ -447,6 +472,33 @@ function codeFontColor(bgColor) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Tab: Support -->
+          <div v-if="activeTab === 'support'">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Support</h3>
+            <p class="text-[10px] text-gray-400 mb-1">Found a bug or have a suggestion?</p>
+            <p class="text-xs italic text-gray-400 mb-4">I've heard it both ways.</p>
+
+            <a
+              :href="supportMailto"
+              class="w-full flex items-center justify-center gap-2 py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-transform"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Email Support
+            </a>
+
+            <div class="mt-4 bg-surface-muted rounded-xl px-3 py-2.5">
+              <p class="text-[11px] text-gray-500">
+                Opens your default mail app pre-filled to <span class="font-mono text-gray-700">{{ SUPPORT_EMAIL }}</span>.
+              </p>
+              <p class="text-[11px] text-gray-400 mt-1">
+                Tip: To send from Gmail, set it as your default mail app in
+                <span class="font-medium">iOS Settings → Mail → Default Mail App → Gmail</span>.
+              </p>
             </div>
           </div>
         </div>
