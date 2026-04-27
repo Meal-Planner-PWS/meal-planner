@@ -9,9 +9,23 @@ import MealCodeSettings from '../components/planner/MealCodeSettings.vue'
 const plannerStore = usePlannerStore()
 const mealStore = useMealStore()
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
-// --- Week navigation ---
+// --- Week navigation (Sunday-first) ---
+
+function localDateKey(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function thisWeekStart() {
+  const now = new Date()
+  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  sunday.setDate(sunday.getDate() - sunday.getDay()) // back to Sunday
+  return localDateKey(sunday)
+}
 
 const weekLabel = computed(() => {
   const start = new Date(plannerStore.currentWeekStart + 'T00:00:00')
@@ -26,18 +40,12 @@ const weekLabel = computed(() => {
 })
 
 function todayDayKey() {
-  const dayIndex = new Date().getDay()
-  const mapped = dayIndex === 0 ? 6 : dayIndex - 1
-  return DAYS[mapped]
+  // getDay: 0=Sunday, 1=Monday, ... — matches DAYS array directly
+  return DAYS[new Date().getDay()]
 }
 
 const isCurrentWeek = computed(() => {
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-  const thisMonday = new Date(now)
-  thisMonday.setDate(diff)
-  return plannerStore.currentWeekStart === thisMonday.toISOString().split('T')[0]
+  return plannerStore.currentWeekStart === thisWeekStart()
 })
 
 function isToday(dayKey) {
@@ -139,12 +147,7 @@ onMounted(async () => {
 })
 
 watch(() => plannerStore.currentWeekStart, async (val) => {
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-  const thisMonday = new Date(now)
-  thisMonday.setDate(diff)
-  if (val === thisMonday.toISOString().split('T')[0]) {
+  if (val === thisWeekStart()) {
     await nextTick()
     const todayEl = document.getElementById(`day-${todayDayKey()}`)
     if (todayEl) {

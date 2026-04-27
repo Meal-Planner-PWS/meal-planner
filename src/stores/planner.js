@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { useSync } from '../composables/useSync'
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack']
 
 function createEmptyWeek() {
@@ -12,12 +12,14 @@ function createEmptyWeek() {
   return days
 }
 
+/** Returns the local-date ISO string (YYYY-MM-DD) for the Sunday of `date`'s week. */
 function getWeekStart(date = new Date()) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  return d.toISOString().split('T')[0]
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  d.setDate(d.getDate() - d.getDay()) // back up to Sunday (getDay: 0=Sun)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 /**
@@ -142,9 +144,9 @@ export const usePlannerStore = defineStore('planner', {
       const current = this.weekPlans[this.currentWeekStart]
       if (!current) return
 
-      const nextStart = new Date(this.currentWeekStart)
+      const nextStart = new Date(this.currentWeekStart + 'T00:00:00')
       nextStart.setDate(nextStart.getDate() + 7)
-      const nextWeekKey = nextStart.toISOString().split('T')[0]
+      const nextWeekKey = getWeekStart(nextStart)
 
       this.weekPlans[nextWeekKey] = JSON.parse(JSON.stringify(current))
       this.weekPlans[nextWeekKey].weekStart = nextWeekKey
@@ -158,9 +160,9 @@ export const usePlannerStore = defineStore('planner', {
     },
 
     navigateWeek(direction) {
-      const d = new Date(this.currentWeekStart)
+      const d = new Date(this.currentWeekStart + 'T00:00:00')
       d.setDate(d.getDate() + direction * 7)
-      this.currentWeekStart = d.toISOString().split('T')[0]
+      this.currentWeekStart = getWeekStart(d)
     }
   },
 
@@ -168,6 +170,9 @@ export const usePlannerStore = defineStore('planner', {
     afterHydrate(ctx) {
       // Migrate any legacy single-ID slot data to arrays on load
       ctx.store.weekPlans = migrateWeekPlans(ctx.store.weekPlans)
+      // Always reset to the actual current week on load — the persisted
+      // currentWeekStart could be stale (from a previous session/week)
+      ctx.store.currentWeekStart = getWeekStart()
     }
   }
 })
