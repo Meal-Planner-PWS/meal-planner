@@ -46,17 +46,17 @@ export function useSync() {
         axios.get(`${FUNCTIONS_BASE}/settings`).catch(() => ({ data: null }))
       ])
 
-      // Merge meals — server list is lightweight (no ingredients/instructions/notes/sourceUrl,
-      // and photo is empty for base64 uploads). Preserve local detail and base64 photos.
+      // Merge meals — server list is lightweight (no ingredients/instructions/notes/sourceUrl).
+      // Photos are now URL-only (Netlify Blobs), so server is authoritative for photo too.
+      // Preserve local detail fields (loaded via fetchMealDetail) since they aren't in the list.
       if (Array.isArray(mealsRes.data) && mealsRes.data.length > 0) {
         const localMap = new Map(mealStore.meals.map((m) => [m.id, m]))
         const merged = mealsRes.data.map((serverMeal) => {
           const local = localMap.get(serverMeal.id)
           if (local) {
-            // Server wins for list fields BUT preserve local photo when server photo is empty
-            // (server returns '' for base64 photos to keep payload small)
-            const photo = serverMeal.photo || local.photo || ''
-            return { ...local, ...serverMeal, photo }
+            // Server wins for all fields it provides (incl. photo URL).
+            // Local-only fields (ingredients, instructions, etc.) are preserved.
+            return { ...local, ...serverMeal }
           }
           // New from server — fill in missing detail fields with defaults
           return {

@@ -2,6 +2,19 @@ import { defineStore } from 'pinia'
 import { useSync } from '../composables/useSync'
 import axios from 'axios'
 
+/**
+ * Photos must be URLs only. Strip any base64/data URL that slips into a write
+ * (e.g. from a stale client that hasn't seen the upload-photo migration).
+ */
+function stripBase64Photo(meal) {
+  if (!meal || !meal.photo) return meal
+  if (typeof meal.photo === 'string' && meal.photo.startsWith('data:')) {
+    console.warn('[meals] stripping base64 photo on write — use upload-photo endpoint')
+    return { ...meal, photo: '' }
+  }
+  return meal
+}
+
 /** UUID generator with fallback for older browsers lacking crypto.randomUUID */
 function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -71,6 +84,9 @@ export const useMealStore = defineStore('meals', {
   actions: {
     addMeal(meal) {
       const now = new Date().toISOString()
+      // Hard guard: photos must be URLs, never base64. If a stale client somehow
+      // tries to save base64, drop it rather than bloat Turso & break sync.
+      const safe = stripBase64Photo(meal)
       const newMeal = {
         id: generateId(),
         name: '',
@@ -84,7 +100,7 @@ export const useMealStore = defineStore('meals', {
         isFavorite: false,
         createdAt: now,
         updatedAt: now,
-        ...meal
+        ...safe
       }
       this.meals.push(newMeal)
       try { useSync().queueChange('meal_upsert', newMeal) } catch (e) { console.warn('[meals] sync queue failed:', e) }
@@ -93,9 +109,10 @@ export const useMealStore = defineStore('meals', {
     updateMeal(id, updates) {
       const idx = this.meals.findIndex((m) => m.id === id)
       if (idx !== -1) {
+        const safe = stripBase64Photo(updates)
         this.meals[idx] = {
           ...this.meals[idx],
-          ...updates,
+          ...safe,
           updatedAt: new Date().toISOString()
         }
         try { useSync().queueChange('meal_upsert', this.meals[idx]) } catch (e) { console.warn('[meals] sync queue failed:', e) }

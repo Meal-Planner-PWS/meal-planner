@@ -34,13 +34,16 @@ export async function handler(event) {
         })
       } else {
         const m = item.data
+        // Server-side guard: photos are URLs only. Drop base64 to keep Turso lean
+        // and prevent the lightweight list endpoint from ever exceeding payload limits.
+        const photo = (m.photo && !String(m.photo).startsWith('data:')) ? m.photo : ''
         statements.push({
           sql: `INSERT OR REPLACE INTO meals (id, name, category, ingredients, instructions, source_url, notes, photo, prep_time, is_favorite, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             m.id, m.name || '', m.category || 'dinner',
             JSON.stringify(m.ingredients || []),
-            m.instructions || '', m.sourceUrl || '', m.notes || '', m.photo || '',
+            m.instructions || '', m.sourceUrl || '', m.notes || '', photo,
             m.prepTime || null,
             m.isFavorite ? 1 : 0,
             m.createdAt || new Date().toISOString(),

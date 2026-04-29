@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMealStore } from '../stores/meals'
 import { usePlannerStore } from '../stores/planner'
 import { useIdeasStore } from '../stores/ideas'
+import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +33,8 @@ const form = ref({
 const nameError = ref(false)
 const ingredientInput = ref('')
 const photoInput = ref(null)
+const photoUploading = ref(false)
+const photoError = ref('')
 
 function fillForm(meal) {
   form.value = {
@@ -80,15 +83,41 @@ function removeIngredient(idx) {
   form.value.ingredients.splice(idx, 1)
 }
 
-function handlePhoto(e) {
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Upload photo to Netlify Blobs via /upload-photo, then save the URL into form.photo.
+ * Photos are NEVER stored as base64 in the form/store/Turso — only URLs.
+ */
+async function handlePhoto(e) {
   const file = e.target.files?.[0]
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = (ev) => {
-    form.value.photo = ev.target.result
+  photoError.value = ''
+  photoUploading.value = true
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file)
+    const mealId = isEdit.value ? route.params.id : undefined
+    const res = await axios.post('/.netlify/functions/upload-photo', { dataUrl, mealId })
+    if (res.data?.url) {
+      form.value.photo = res.data.url
+    } else {
+      throw new Error('Upload returned no URL')
+    }
+  } catch (err) {
+    photoError.value = err.response?.data?.error || err.message || 'Upload failed'
+    if (photoInput.value) photoInput.value.value = ''
+  } finally {
+    photoUploading.value = false
   }
-  reader.readAsDataURL(file)
 }
 
 function removePhoto() {
@@ -198,7 +227,7 @@ const categories = [
       <!-- Photo -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Photo</label>
-        <div v-if="form.photo" class="relative mb-2">
+        <div v-if="form.photo && !photoUploading" class="relative mb-2">
           <img :src="form.photo" class="w-full h-48 object-cover rounded-xl" />
           <button
             type="button"
@@ -215,19 +244,27 @@ const categories = [
           class="flex items-center justify-center w-full h-32 bg-surface-muted rounded-xl border-2 border-dashed border-gray-300 cursor-pointer"
         >
           <div class="text-center">
-            <svg class="w-8 h-8 mx-auto text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span class="text-sm text-gray-400">Tap to add photo</span>
+            <template v-if="photoUploading">
+              <div class="w-6 h-6 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-1" />
+              <span class="text-sm text-gray-500">Uploading...</span>
+            </template>
+            <template v-else>
+              <svg class="w-8 h-8 mx-auto text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-sm text-gray-400">Tap to add photo</span>
+            </template>
           </div>
           <input
             ref="photoInput"
             type="file"
             accept="image/*"
             class="hidden"
+            :disabled="photoUploading"
             @change="handlePhoto"
           />
         </label>
+        <p v-if="photoError" class="text-red-500 text-xs mt-1">{{ photoError }}</p>
       </div>
 
       <!-- Ingredients -->

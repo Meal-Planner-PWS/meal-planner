@@ -37,14 +37,15 @@ export async function handler(event) {
   }
 }
 
-/** Lightweight list — includes photo URLs but excludes base64/data URLs to stay under 6MB */
+/** Lightweight list — photos are URLs only (post-migration), so always safe to include */
 async function listMeals() {
   const result = await db.execute(
     'SELECT id, name, category, is_favorite, prep_time, photo, updated_at FROM meals ORDER BY updated_at DESC'
   )
   const meals = result.rows.map((row) => {
-    // Only include photo if it's a URL — exclude base64/data URLs (too large for list payload)
-    const photo = (row.photo && row.photo.startsWith('http')) ? row.photo : ''
+    // Defensive: if any straggling base64 photo slips through (pre-migration row), drop it
+    // to keep the list payload small. Detail endpoint can still return it.
+    const photo = (row.photo && !row.photo.startsWith('data:')) ? row.photo : ''
     return {
       id: row.id,
       name: row.name,
@@ -83,7 +84,8 @@ async function createMeal(meal) {
       meal.instructions || '',
       meal.sourceUrl || '',
       meal.notes || '',
-      meal.photo || '',
+      // Server-side guard: photos are URLs only, never base64
+      (meal.photo && !String(meal.photo).startsWith('data:')) ? meal.photo : '',
       meal.prepTime || null,
       meal.isFavorite ? 1 : 0,
       meal.createdAt || new Date().toISOString(),
@@ -110,7 +112,8 @@ async function updateMeal(meal) {
       meal.instructions || '',
       meal.sourceUrl || '',
       meal.notes || '',
-      meal.photo || '',
+      // Server-side guard: photos are URLs only, never base64
+      (meal.photo && !String(meal.photo).startsWith('data:')) ? meal.photo : '',
       meal.prepTime || null,
       meal.isFavorite ? 1 : 0,
       meal.createdAt || new Date().toISOString(),
