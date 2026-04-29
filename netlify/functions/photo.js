@@ -1,56 +1,39 @@
 /**
- * Photo serve endpoint.
+ * Photo serve endpoint (Netlify Functions v2 runtime).
  * GET /.netlify/functions/photo?key=... → JPEG bytes
- * Long cache because keys are stable per meal (replaced on re-upload).
  */
 import { getStore } from '@netlify/blobs'
 
-function photosStore() {
-  return getStore({
-    name: 'meal-photos',
-    siteID: process.env.NETLIFY_SITE_ID,
-    token: process.env.NETLIFY_BLOBS_TOKEN
-  })
-}
-
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: ''
-    }
+export default async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('', { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } })
   }
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method not allowed' }
+  if (req.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 })
   }
 
-  const key = event.queryStringParameters?.key
+  const url = new URL(req.url)
+  const key = url.searchParams.get('key')
   if (!key) {
-    return { statusCode: 400, body: 'key is required' }
+    return new Response('key is required', { status: 400 })
   }
 
   try {
-    const store = photosStore()
+    const store = getStore('meal-photos')
     const data = await store.get(key, { type: 'arrayBuffer' })
     if (!data) {
-      return { statusCode: 404, body: 'Not found' }
+      return new Response('Not found', { status: 404 })
     }
 
-    return {
-      statusCode: 200,
+    return new Response(data, {
+      status: 200,
       headers: {
         'Content-Type': 'image/jpeg',
-        // Photo blobs are content-addressable per meal; aggressive cache is fine.
-        // Photos replaced on re-upload use the same key but the browser cache will
-        // reflect the new content within ~24h, or hard refresh.
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
         'Access-Control-Allow-Origin': '*'
-      },
-      body: Buffer.from(data).toString('base64'),
-      isBase64Encoded: true
-    }
+      }
+    })
   } catch (err) {
-    return { statusCode: 500, body: err.message }
+    return new Response(err.message, { status: 500 })
   }
 }

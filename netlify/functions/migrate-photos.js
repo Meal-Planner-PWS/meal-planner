@@ -1,13 +1,12 @@
 /**
  * One-time migration: decode base64 photos in Turso → upload to Netlify Blobs → replace with URL.
  *
- * Run via: netlify functions:invoke migrate-photos
+ * Run via: curl -X POST https://<your-site>/.netlify/functions/migrate-photos
  *
  * Idempotent: re-running overwrites the same blob keys (= meal IDs) and skips meals
  * that already have a URL photo.
  *
- * Failure-isolated: each meal is independent. If sharp fails to decode a photo, that
- * meal's row stays untouched and the script logs the error.
+ * Uses v2 runtime (export default async) so Netlify auto-injects blob context.
  */
 import { createClient } from '@libsql/client'
 import { getStore } from '@netlify/blobs'
@@ -18,20 +17,12 @@ const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN
 })
 
-function photosStore() {
-  return getStore({
-    name: 'meal-photos',
-    siteID: process.env.NETLIFY_SITE_ID,
-    token: process.env.NETLIFY_BLOBS_TOKEN
-  })
-}
-
-const CORS_HEADERS = {
+const HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Content-Type': 'application/json'
 }
 
-export async function handler() {
+export default async () => {
   const log = []
   const result = { migrated: 0, skipped: 0, failed: 0, total: 0, errors: [] }
 
@@ -42,7 +33,7 @@ export async function handler() {
     result.total = all.rows.length
     log.push(`Found ${result.total} meals with base64 photos`)
 
-    const store = photosStore()
+    const store = getStore('meal-photos')
 
     for (const row of all.rows) {
       const id = row.id
@@ -50,24 +41,20 @@ export async function handler() {
       const dataUrl = row.photo
 
       try {
-        // Strip "data:image/...;base64," prefix
         const match = dataUrl.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/)
         if (!match) {
           throw new Error('Photo is not a recognizable data URL')
         }
         const buffer = Buffer.from(match[1], 'base64')
 
-        // Validate + resize
         const processed = await sharp(buffer)
           .rotate()
           .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality: 85, mozjpeg: true })
           .toBuffer()
 
-        // Upload to blob store keyed by meal ID
         await store.set(id, processed, { metadata: { contentType: 'image/jpeg' } })
 
-        // ONLY after successful upload, update the Turso row
         const newUrl = `/.netlify/functions/photo?key=${encodeURIComponent(id)}`
         await db.execute({
           sql: 'UPDATE meals SET photo = ?, updated_at = ? WHERE id = ?',
@@ -83,16 +70,11 @@ export async function handler() {
       }
     }
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ ...result, log }, null, 2)
-    }
+    return new Response(JSON.stringify({ ...result, log }, null, 2), { status: 200, headers: HEADERS })
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: err.message, partial: result, log })
-    }
+    return new Response(
+      JSON.stringify({ error: err.message, partial: result, log }, null, 2),
+      { status: 500, headers: HEADERS }
+    )
   }
 }

@@ -1,22 +1,15 @@
 /**
- * Photo upload endpoint.
+ * Photo upload endpoint (Netlify Functions v2 runtime).
  * POST { dataUrl: 'data:image/...;base64,...', mealId?: 'uuid' }
  * - Decodes base64
  * - Resizes to max 1200px wide, JPEG 85% quality
  * - Stores in Netlify Blobs under key (mealId or random)
- * - Returns { url: '/.netlify/functions/photo?key=...', key }
+ * - Returns { url, key, size }
+ *
+ * Uses v2 runtime (export default async) so Netlify auto-injects blob context.
  */
 import { getStore } from '@netlify/blobs'
 import sharp from 'sharp'
-
-/** Get the photos blob store with explicit creds (works in dev + production). */
-function photosStore() {
-  return getStore({
-    name: 'meal-photos',
-    siteID: process.env.NETLIFY_SITE_ID,
-    token: process.env.NETLIFY_BLOBS_TOKEN
-  })
-}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -26,55 +19,51 @@ const CORS_HEADERS = {
 }
 
 function genKey() {
-  // Random 16-byte hex key for new photos without an explicit mealId
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 }
 
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS_HEADERS, body: '' }
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS })
+}
+
+export default async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('', { status: 204, headers: CORS_HEADERS })
   }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) }
+  if (req.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   try {
-    const { dataUrl, mealId } = JSON.parse(event.body || '{}')
+    const { dataUrl, mealId } = await req.json()
     if (!dataUrl || typeof dataUrl !== 'string') {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'dataUrl is required' }) }
+      return json({ error: 'dataUrl is required' }, 400)
     }
 
-    // Strip "data:image/...;base64," prefix
     const match = dataUrl.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/)
     if (!match) {
-      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Invalid data URL' }) }
+      return json({ error: 'Invalid data URL' }, 400)
     }
     const buffer = Buffer.from(match[1], 'base64')
 
-    // Resize + recompress as JPEG
     const processed = await sharp(buffer)
-      .rotate() // honor EXIF orientation
+      .rotate()
       .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85, mozjpeg: true })
       .toBuffer()
 
-    // Store in Netlify Blobs
     const key = mealId || genKey()
-    const store = photosStore()
+    const store = getStore('meal-photos')
     await store.set(key, processed, { metadata: { contentType: 'image/jpeg' } })
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        url: `/.netlify/functions/photo?key=${encodeURIComponent(key)}`,
-        key,
-        size: processed.length
-      })
-    }
+    return json({
+      url: `/.netlify/functions/photo?key=${encodeURIComponent(key)}`,
+      key,
+      size: processed.length
+    })
   } catch (err) {
-    return { statusCode: 500, headers: CORS_HEADERS, body: JSON.stringify({ error: err.message }) }
+    return json({ error: err.message }, 500)
   }
 }
