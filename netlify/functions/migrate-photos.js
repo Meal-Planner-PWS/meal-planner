@@ -18,6 +18,14 @@ const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN
 })
 
+function photosStore() {
+  return getStore({
+    name: 'meal-photos',
+    siteID: process.env.NETLIFY_SITE_ID,
+    token: process.env.NETLIFY_BLOBS_TOKEN
+  })
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Content-Type': 'application/json'
@@ -34,7 +42,7 @@ export async function handler() {
     result.total = all.rows.length
     log.push(`Found ${result.total} meals with base64 photos`)
 
-    const store = getStore('meal-photos')
+    const store = photosStore()
 
     for (const row of all.rows) {
       const id = row.id

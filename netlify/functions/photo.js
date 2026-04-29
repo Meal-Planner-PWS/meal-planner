@@ -5,6 +5,14 @@
  */
 import { getStore } from '@netlify/blobs'
 
+function photosStore() {
+  return getStore({
+    name: 'meal-photos',
+    siteID: process.env.NETLIFY_SITE_ID,
+    token: process.env.NETLIFY_BLOBS_TOKEN
+  })
+}
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -23,7 +31,7 @@ export async function handler(event) {
   }
 
   try {
-    const store = getStore('meal-photos')
+    const store = photosStore()
     const data = await store.get(key, { type: 'arrayBuffer' })
     if (!data) {
       return { statusCode: 404, body: 'Not found' }

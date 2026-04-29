@@ -9,6 +9,15 @@
 import { getStore } from '@netlify/blobs'
 import sharp from 'sharp'
 
+/** Get the photos blob store with explicit creds (works in dev + production). */
+function photosStore() {
+  return getStore({
+    name: 'meal-photos',
+    siteID: process.env.NETLIFY_SITE_ID,
+    token: process.env.NETLIFY_BLOBS_TOKEN
+  })
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -53,7 +62,7 @@ export async function handler(event) {
 
     // Store in Netlify Blobs
     const key = mealId || genKey()
-    const store = getStore('meal-photos')
+    const store = photosStore()
     await store.set(key, processed, { metadata: { contentType: 'image/jpeg' } })
 
     return {
