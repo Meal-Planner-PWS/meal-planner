@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import BottomNav from './components/common/BottomNav.vue'
 import OfflineBanner from './components/common/OfflineBanner.vue'
 import InstallPrompt from './components/common/InstallPrompt.vue'
+import TechSupportToast from './components/common/TechSupportToast.vue'
 import { useSync } from './composables/useSync'
 
 const route = useRoute()
@@ -27,6 +28,7 @@ onMounted(() => {
 
 <template>
   <OfflineBanner />
+  <TechSupportToast />
   <div class="flex-1 bg-surface" :class="hideBottomNav ? '' : 'pb-18'">
     <router-view />
   </div>
