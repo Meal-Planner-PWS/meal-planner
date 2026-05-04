@@ -1,6 +1,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import MealSlot from './MealSlot.vue'
+import { usePlannerStore } from '../../stores/planner'
+
+const plannerStore = usePlannerStore()
 
 const props = defineProps({
   day: { type: String, required: true },
@@ -60,6 +63,13 @@ function isDragSource(slot) {
   return props.dragSource?.day === props.day && props.dragSource?.slot === slot
 }
 
+// Prep tasks across the week that are due TODAY (this day card)
+const prepDueToday = computed(() => plannerStore.prepTasksByDay(props.day))
+
+function togglePrepDone(item) {
+  plannerStore.togglePrepTask(item.mealDay, item.mealSlot, item.task.id)
+}
+
 const localNotes = ref(props.dayData.notes || '')
 watch(() => props.dayData.notes, (val) => {
   if (val !== localNotes.value) localNotes.value = val || ''
@@ -95,6 +105,40 @@ function commitNotes() {
       <span class="text-xs" :class="isToday ? 'text-white/70' : 'text-gray-400'">
         {{ filledCount }}/3 planned
       </span>
+    </div>
+
+    <!-- Prep tasks due today (drawn from any meal in the week) -->
+    <div v-if="prepDueToday.length" class="bg-amber-50 border-x border-amber-100 px-3 py-2 space-y-1">
+      <div class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Prep
+      </div>
+      <button
+        v-for="item in prepDueToday"
+        :key="item.task.id"
+        @click="togglePrepDone(item)"
+        class="w-full flex items-center gap-2 text-left active:opacity-70"
+      >
+        <span
+          class="w-4 h-4 rounded border shrink-0 flex items-center justify-center"
+          :class="item.task.done ? 'bg-amber-500 border-amber-500' : 'bg-white border-amber-300'"
+        >
+          <svg v-if="item.task.done" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+        <span
+          class="text-xs flex-1 min-w-0 truncate"
+          :class="item.task.done ? 'line-through text-amber-400' : 'text-amber-800'"
+        >
+          {{ item.task.text }}
+        </span>
+        <span v-if="item.mealText" class="text-[10px] text-amber-500 truncate max-w-[40%]">
+          for {{ item.mealText }}
+        </span>
+      </button>
     </div>
 
     <!-- Meal slots -->

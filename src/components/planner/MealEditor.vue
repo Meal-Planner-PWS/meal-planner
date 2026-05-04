@@ -26,17 +26,42 @@ const initial = computed(() => plannerStore.currentWeek.days[props.day]?.[props.
 const text = ref('')
 const linkedRecipeIds = ref([])
 const linkedHelperIds = ref([])
+const prepTasks = ref([])
+const newPrepText = ref('')
+const newPrepDueDay = ref('')
+
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAY_SHORT = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' }
 
 watch(() => initial.value, (val) => {
   text.value = val?.text || ''
   linkedRecipeIds.value = [...(val?.recipeIds || [])]
   linkedHelperIds.value = [...(val?.helperIds || [])]
+  prepTasks.value = (val?.prepTasks || []).map((t) => ({ ...t }))
+  // Default new prep tasks to be due the day before the meal (or the meal day if it's Monday)
+  newPrepDueDay.value = props.day
 }, { immediate: true })
 
 function toggleHelper(id) {
   const idx = linkedHelperIds.value.indexOf(id)
   if (idx === -1) linkedHelperIds.value.push(id)
   else linkedHelperIds.value.splice(idx, 1)
+}
+
+function addPrepTask() {
+  const t = newPrepText.value.trim()
+  if (!t) return
+  prepTasks.value.push({
+    id: 'p' + Math.random().toString(36).slice(2, 10),
+    text: t,
+    dueDay: newPrepDueDay.value || props.day,
+    done: false
+  })
+  newPrepText.value = ''
+}
+
+function removePrepTask(id) {
+  prepTasks.value = prepTasks.value.filter((t) => t.id !== id)
 }
 
 const dayLabels = {
@@ -71,7 +96,7 @@ function save() {
     text: text.value,
     recipeIds: linkedRecipeIds.value,
     helperIds: linkedHelperIds.value,
-    prepTasks: initial.value?.prepTasks || []
+    prepTasks: prepTasks.value
   })
   emit('close')
 }
@@ -207,6 +232,66 @@ function createNewRecipe() {
               />
             </div>
             <p v-if="linkedHelperIds.length === 0" class="text-[11px] text-gray-400 italic mt-1.5">Tap a circle to mark a helper. Long-press a meal to drag it later.</p>
+          </div>
+
+          <!-- Prep tasks -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5">Prep tasks</label>
+            <p class="text-[10px] text-gray-400 mb-2">Add steps with the day they're due — they'll show up on that day's prep list.</p>
+
+            <!-- Existing tasks -->
+            <div v-if="prepTasks.length" class="space-y-1.5 mb-2">
+              <div
+                v-for="task in prepTasks"
+                :key="task.id"
+                class="bg-surface-muted rounded-xl px-2.5 py-2"
+              >
+                <div class="flex items-center gap-2 mb-1.5">
+                  <input
+                    v-model="task.text"
+                    type="text"
+                    class="flex-1 min-w-0 px-2 py-1 bg-white rounded border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500/30"
+                  />
+                  <button
+                    @click="removePrepTask(task.id)"
+                    class="p-1 text-red-300 active:text-red-500 shrink-0"
+                    aria-label="Remove task"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    v-for="d in DAY_KEYS"
+                    :key="d"
+                    @click="task.dueDay = d"
+                    class="text-[10px] px-2 py-0.5 rounded-full transition-colors"
+                    :class="task.dueDay === d ? 'bg-primary-500 text-white font-semibold' : 'bg-white text-gray-500 border border-gray-200'"
+                  >
+                    {{ DAY_SHORT[d] }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add new task -->
+            <div class="flex gap-2">
+              <input
+                v-model="newPrepText"
+                type="text"
+                placeholder="e.g. Marinate chicken"
+                class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                @keydown.enter.prevent="addPrepTask"
+              />
+              <button
+                @click="addPrepTask"
+                class="px-3 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium shrink-0 active:scale-95 transition-transform"
+              >
+                Add
+              </button>
+            </div>
           </div>
 
           <!-- Clear button -->

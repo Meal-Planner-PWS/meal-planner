@@ -4,6 +4,10 @@ import { useSync } from '../composables/useSync'
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const SLOTS = ['breakfast', 'lunch', 'dinner']
 
+function genId() {
+  return 'p' + Math.random().toString(36).slice(2, 10)
+}
+
 /**
  * MealEntry shape stored at weekPlans[weekStart].days[day][slot]:
  *   { text: String, recipeIds: [String], helperIds: [String], prepTasks: [...] } | null
@@ -94,6 +98,32 @@ export const usePlannerStore = defineStore('planner', {
         return { weekStart: state.currentWeekStart, days: createEmptyWeek() }
       }
       return state.weekPlans[state.currentWeekStart]
+    },
+
+    /**
+     * Prep tasks aggregated by the day they're due, walking every meal in the current week.
+     * Returns a function: dueDay → [{ task, mealDay, mealSlot, mealText }]
+     */
+    prepTasksByDay(state) {
+      return (dueDay) => {
+        const week = state.weekPlans[state.currentWeekStart]
+        if (!week) return []
+        const result = []
+        for (const day of DAYS) {
+          const dayData = week.days[day]
+          if (!dayData) continue
+          for (const slot of SLOTS) {
+            const entry = dayData[slot]
+            if (!entry?.prepTasks) continue
+            for (const task of entry.prepTasks) {
+              if (task.dueDay === dueDay) {
+                result.push({ task, mealDay: day, mealSlot: slot, mealText: entry.text || '' })
+              }
+            }
+          }
+        }
+        return result
+      }
     }
   },
 
@@ -197,6 +227,54 @@ export const usePlannerStore = defineStore('planner', {
       this._queueDayNotes(this.currentWeekStart, day)
     },
 
+    /** Add a prep task to a meal. dueDay is one of the day keys ('monday'..'sunday'). */
+    addPrepTask(day, slot, taskText, dueDay) {
+      this.ensureWeekExists(this.currentWeekStart)
+      const dayData = this.weekPlans[this.currentWeekStart].days[day]
+      if (!dayData[slot]) return
+      const text = (taskText || '').trim()
+      if (!text) return
+      dayData[slot].prepTasks.push({
+        id: genId(),
+        text,
+        dueDay: dueDay || day,
+        done: false
+      })
+      this._queueSlot(this.currentWeekStart, day, slot)
+    },
+
+    /** Update a prep task's text or dueDay. */
+    updatePrepTask(day, slot, taskId, updates) {
+      this.ensureWeekExists(this.currentWeekStart)
+      const dayData = this.weekPlans[this.currentWeekStart].days[day]
+      if (!dayData[slot]) return
+      const task = dayData[slot].prepTasks.find((t) => t.id === taskId)
+      if (!task) return
+      if (typeof updates.text === 'string') task.text = updates.text
+      if (typeof updates.dueDay === 'string') task.dueDay = updates.dueDay
+      this._queueSlot(this.currentWeekStart, day, slot)
+    },
+
+    /** Toggle a prep task's done flag. */
+    togglePrepTask(day, slot, taskId) {
+      this.ensureWeekExists(this.currentWeekStart)
+      const dayData = this.weekPlans[this.currentWeekStart].days[day]
+      if (!dayData[slot]) return
+      const task = dayData[slot].prepTasks.find((t) => t.id === taskId)
+      if (!task) return
+      task.done = !task.done
+      this._queueSlot(this.currentWeekStart, day, slot)
+    },
+
+    /** Remove a prep task. */
+    removePrepTask(day, slot, taskId) {
+      this.ensureWeekExists(this.currentWeekStart)
+      const dayData = this.weekPlans[this.currentWeekStart].days[day]
+      if (!dayData[slot]) return
+      dayData[slot].prepTasks = dayData[slot].prepTasks.filter((t) => t.id !== taskId)
+      this._queueSlot(this.currentWeekStart, day, slot)
+    },
+
     /** Swap entries between two slots (still used as a fallback for accessibility) */
     swapSlots(fromDay, fromSlot, toDay, toSlot) {
       this.ensureWeekExists(this.currentWeekStart)
@@ -242,8 +320,27 @@ export const usePlannerStore = defineStore('planner', {
       nextStart.setDate(nextStart.getDate() + 7)
       const nextWeekKey = getWeekStart(nextStart)
 
-      this.weekPlans[nextWeekKey] = JSON.parse(JSON.stringify(current))
-      this.weekPlans[nextWeekKey].weekStart = nextWeekKey
+      const copied = JSON.parse(JSON.stringify(current))
+      copied.weekStart = nextWeekKey
+
+      // Reset prep task done flags + regenerate task IDs so they don't collide with the source week
+      for (const day of DAYS) {
+        const dayData = copied.days[day]
+        if (!dayData) continue
+        for (const slot of SLOTS) {
+          const entry = dayData[slot]
+          if (entry?.prepTasks) {
+            entry.prepTasks = entry.prepTasks.map((t) => ({
+              id: genId(),
+              text: t.text,
+              dueDay: t.dueDay,
+              done: false
+            }))
+          }
+        }
+      }
+
+      this.weekPlans[nextWeekKey] = copied
 
       for (const day of DAYS) {
         for (const slot of SLOTS) {
