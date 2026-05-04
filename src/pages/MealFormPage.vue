@@ -148,7 +148,7 @@ function save() {
 
       if (plannerDay && plannerSlot) {
         const newMeal = mealStore.meals[mealStore.meals.length - 1]
-        plannerStore.addMealToSlot(plannerDay, plannerSlot, newMeal.id)
+        plannerStore.linkRecipe(plannerDay, plannerSlot, newMeal.id, newMeal.name)
         router.push('/planner')
       } else {
         router.push('/library')

@@ -1,28 +1,26 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { usePlannerStore } from '../stores/planner'
-import { useMealStore } from '../stores/meals'
 import DaySection from '../components/planner/DaySection.vue'
-import MealPicker from '../components/planner/MealPicker.vue'
+import MealEditor from '../components/planner/MealEditor.vue'
 import MealCodeSettings from '../components/planner/MealCodeSettings.vue'
 
 const plannerStore = usePlannerStore()
-const mealStore = useMealStore()
 
-const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-// True when no meals are planned in any slot for the currently viewed week
 const isEmptyWeek = computed(() => {
   const days = plannerStore.currentWeek.days
   for (const day of DAYS) {
-    for (const slot of ['breakfast', 'lunch', 'dinner', 'snack']) {
-      if ((days[day]?.[slot] || []).length > 0) return false
+    for (const slot of ['breakfast', 'lunch', 'dinner']) {
+      const v = days[day]?.[slot]
+      if (v && (v.text?.trim() || (v.recipeIds && v.recipeIds.length > 0))) return false
     }
   }
   return true
 })
 
-// --- Week navigation (Sunday-first) ---
+// --- Week navigation (Monday-first) ---
 
 function localDateKey(d) {
   const y = d.getFullYear()
@@ -33,9 +31,11 @@ function localDateKey(d) {
 
 function thisWeekStart() {
   const now = new Date()
-  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  sunday.setDate(sunday.getDate() - sunday.getDay()) // back to Sunday
-  return localDateKey(sunday)
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  // Roll back to Monday: getDay() 0=Sun → -6, 1=Mon → 0, 2=Tue → -1, ...
+  const offset = d.getDay() === 0 ? -6 : 1 - d.getDay()
+  d.setDate(d.getDate() + offset)
+  return localDateKey(d)
 }
 
 const weekLabel = computed(() => {
@@ -44,39 +44,37 @@ const weekLabel = computed(() => {
   end.setDate(end.getDate() + 6)
   const sMonth = start.toLocaleString('default', { month: 'short' })
   const eMonth = end.toLocaleString('default', { month: 'short' })
-  if (sMonth === eMonth) {
-    return `${sMonth} ${start.getDate()}–${end.getDate()}`
-  }
+  if (sMonth === eMonth) return `${sMonth} ${start.getDate()}–${end.getDate()}`
   return `${sMonth} ${start.getDate()} – ${eMonth} ${end.getDate()}`
 })
 
 function todayDayKey() {
-  // getDay: 0=Sunday, 1=Monday, ... — matches DAYS array directly
-  return DAYS[new Date().getDay()]
+  // getDay: 0=Sun, 1=Mon, ..., 6=Sat → DAYS index (Monday-first)
+  const d = new Date().getDay()
+  return d === 0 ? 'sunday' : DAYS[d - 1]
 }
 
-const isCurrentWeek = computed(() => {
-  return plannerStore.currentWeekStart === thisWeekStart()
-})
-
+const isCurrentWeek = computed(() => plannerStore.currentWeekStart === thisWeekStart())
 function isToday(dayKey) {
   return isCurrentWeek.value && dayKey === todayDayKey()
 }
 
-// --- Meal picker ---
+// --- Meal editor (replaces MealPicker) ---
 
-const showPicker = ref(false)
-const pickerTarget = ref({ day: '', slot: '' })
+const showEditor = ref(false)
+const editorTarget = ref({ day: '', slot: '' })
 
-function openPicker({ day, slot }) {
-  pickerTarget.value = { day, slot }
-  showPicker.value = true
+function openEditor({ day, slot }) {
+  editorTarget.value = { day, slot }
+  showEditor.value = true
 }
 
-// --- Inline remove from MealSlot × button ---
+function clearMealFromSlot({ day, slot }) {
+  plannerStore.clearSlot(day, slot)
+}
 
-function onRemoveMeal({ day, slot, mealId }) {
-  plannerStore.removeMealFromSlot(day, slot, mealId)
+function onNotesUpdate({ day, notes }) {
+  plannerStore.setDayNotes(day, notes)
 }
 
 // --- Slot action sheet (filled slot options) ---
@@ -89,21 +87,12 @@ function openSlotAction({ day, slot }) {
   showActions.value = true
 }
 
-const actionSlotMeals = computed(() => {
-  const daySlots = plannerStore.currentWeek.days[actionTarget.value.day]
-  if (!daySlots) return []
-  const ids = daySlots[actionTarget.value.slot] || []
-  return ids.map((id) => mealStore.getMealById(id)).filter(Boolean)
+const actionMealText = computed(() => {
+  const entry = plannerStore.currentWeek.days[actionTarget.value.day]?.[actionTarget.value.slot]
+  return entry?.text || ''
 })
 
-const actionSlotSummary = computed(() => {
-  const names = actionSlotMeals.value.map((m) => m.name)
-  if (names.length === 0) return ''
-  if (names.length === 1) return names[0]
-  return `${names.length} meals`
-})
-
-function clearSlot() {
+function clearSlotAction() {
   plannerStore.clearSlot(actionTarget.value.day, actionTarget.value.slot)
   showActions.value = false
 }
@@ -130,7 +119,112 @@ function exitSwapMode() {
   swapSource.value = null
 }
 
-// --- Copy / Clear week ---
+// --- Drag-and-drop between slots (Pointer Events, mobile-friendly) ---
+
+const dragSource = ref(null)        // { day, slot } currently being dragged
+const dropTarget = ref(null)        // { day, slot } currently hovered as drop target
+const dragGhostStyle = ref(null)    // { left, top } for the floating preview
+const dragGhostText = ref('')
+
+const LONG_PRESS_MS = 350
+let longPressTimer = null
+let pointerStartXY = null
+let pointerId = null
+
+function onDragStart({ day, slot, pointerEvent }) {
+  if (swapMode.value) return
+  // Don't start drag if the user actually tapped an interactive child (clear, options buttons)
+  const targetEl = pointerEvent?.target
+  if (targetEl && targetEl.closest && targetEl.closest('button')) return
+
+  pointerStartXY = { x: pointerEvent.clientX, y: pointerEvent.clientY }
+  pointerId = pointerEvent.pointerId
+
+  // Hold to start drag — prevents drag-on-tap
+  longPressTimer = setTimeout(() => {
+    const entry = plannerStore.currentWeek.days[day]?.[slot]
+    if (!entry) return
+    dragSource.value = { day, slot }
+    dragGhostText.value = entry.text || (entry.recipeIds || []).join(' + ') || '...'
+    updateGhost(pointerStartXY.x, pointerStartXY.y)
+
+    // Vibrate to confirm (where supported)
+    if (navigator.vibrate) navigator.vibrate(15)
+
+    // Capture pointer so move/up keep firing even if finger leaves the source element
+    try { pointerEvent.target.setPointerCapture(pointerId) } catch {}
+  }, LONG_PRESS_MS)
+}
+
+function onPointerMove(e) {
+  if (longPressTimer && pointerStartXY) {
+    // If the user moves more than 8px before the long-press fires, treat as scroll, not drag
+    const dx = Math.abs(e.clientX - pointerStartXY.x)
+    const dy = Math.abs(e.clientY - pointerStartXY.y)
+    if (dx > 8 || dy > 8) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+      pointerStartXY = null
+    }
+    return
+  }
+
+  if (!dragSource.value) return
+  e.preventDefault()
+  updateGhost(e.clientX, e.clientY)
+
+  // Find slot under finger
+  const el = document.elementFromPoint(e.clientX, e.clientY)
+  const slotEl = el?.closest?.('[data-drop-slot]')
+  if (slotEl) {
+    const day = slotEl.getAttribute('data-drop-day')
+    const slot = slotEl.getAttribute('data-drop-slot')
+    if (dropTarget.value?.day !== day || dropTarget.value?.slot !== slot) {
+      dropTarget.value = { day, slot }
+    }
+  } else {
+    dropTarget.value = null
+  }
+}
+
+function onPointerUp() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+  pointerStartXY = null
+
+  if (dragSource.value && dropTarget.value) {
+    plannerStore.moveMeal(
+      dragSource.value.day, dragSource.value.slot,
+      dropTarget.value.day, dropTarget.value.slot
+    )
+  }
+  dragSource.value = null
+  dropTarget.value = null
+  dragGhostStyle.value = null
+  pointerId = null
+}
+
+function updateGhost(x, y) {
+  dragGhostStyle.value = {
+    transform: `translate(${x + 12}px, ${y + 12}px)`
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('pointermove', onPointerMove, { passive: false })
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
+})
+
+// --- Copy / Clear week / Settings ---
 
 const showSettings = ref(false)
 const showCopyConfirm = ref(false)
@@ -140,30 +234,33 @@ function confirmCopyWeek() {
   plannerStore.copyToNextWeek()
   showCopyConfirm.value = false
 }
-
 function confirmClearWeek() {
   plannerStore.clearWeek()
   showClearConfirm.value = false
 }
 
 // --- Auto-scroll to today ---
+// Only fires on first mount of the session (when there's no scroll cache).
+// Subsequent visits to /planner restore the cached scroll position via the router.
+
+let hasAutoScrolledThisSession = false
 
 onMounted(async () => {
   if (!isCurrentWeek.value) return
+  if (hasAutoScrolledThisSession) return
+  // Skip if router already restored a scroll position
+  if (window.scrollY > 50) return
   await nextTick()
   const todayEl = document.getElementById(`day-${todayDayKey()}`)
-  if (todayEl) {
-    todayEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  if (todayEl) todayEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  hasAutoScrolledThisSession = true
 })
 
 watch(() => plannerStore.currentWeekStart, async (val) => {
   if (val === thisWeekStart()) {
     await nextTick()
     const todayEl = document.getElementById(`day-${todayDayKey()}`)
-    if (todayEl) {
-      todayEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    if (todayEl) todayEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 })
 </script>
@@ -177,7 +274,7 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
         <button
           @click="showSettings = true"
           class="p-2 text-gray-400 active:text-primary-500"
-          title="Meal code settings"
+          title="Settings"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -239,10 +336,7 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
         <p class="text-sm font-semibold text-amber-700">Swap Mode</p>
         <p class="text-xs text-amber-500">Tap another slot to swap meals</p>
       </div>
-      <button
-        @click="exitSwapMode"
-        class="text-xs font-semibold text-amber-600 bg-amber-100 px-3 py-1.5 rounded-lg"
-      >
+      <button @click="exitSwapMode" class="text-xs font-semibold text-amber-600 bg-amber-100 px-3 py-1.5 rounded-lg">
         Cancel
       </button>
     </div>
@@ -258,35 +352,54 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
 
     <!-- Day sections -->
     <div class="space-y-3" @click.stop>
-      <DaySection
+      <!-- Wrap each day so we can attach data attributes for drop-target hit-testing.
+           Each MealSlot is wrapped at render time with the same data attributes. -->
+      <div
         v-for="day in DAYS"
         :key="day"
-        :day="day"
-        :slots="plannerStore.currentWeek.days[day]"
-        :is-today="isToday(day)"
-        :swap-mode="swapMode"
-        :swap-source="swapSource"
-        @pick="openPicker"
-        @slot-action="openSlotAction"
-        @swap-target="onSwapTarget"
-        @remove-meal="onRemoveMeal"
-      />
+      >
+        <!-- Drop targets are inside DaySection's MealSlot — we tag the wrappers via data attrs in a loop. -->
+        <DaySection
+          :day="day"
+          :day-data="plannerStore.currentWeek.days[day] || { breakfast: null, lunch: null, dinner: null, notes: '' }"
+          :is-today="isToday(day)"
+          :swap-mode="swapMode"
+          :swap-source="swapSource"
+          :drag-source="dragSource"
+          :drop-target="dropTarget"
+          @edit="openEditor"
+          @slot-action="openSlotAction"
+          @swap-target="onSwapTarget"
+          @clear="clearMealFromSlot"
+          @drag-start="onDragStart"
+          @notes-update="onNotesUpdate"
+        />
+      </div>
+    </div>
+
+    <!-- Drag preview ghost -->
+    <div
+      v-if="dragSource"
+      class="fixed top-0 left-0 z-[80] pointer-events-none bg-primary-500 text-white px-3 py-2 rounded-xl shadow-xl text-sm font-semibold"
+      :style="dragGhostStyle"
+    >
+      {{ dragGhostText }}
     </div>
   </div>
 
-  <!-- Meal Code Settings -->
+  <!-- Settings -->
   <MealCodeSettings
     v-if="showSettings"
     default-tab="codes"
     @close="showSettings = false"
   />
 
-  <!-- Meal Picker overlay -->
-  <MealPicker
-    v-if="showPicker"
-    :day="pickerTarget.day"
-    :slot="pickerTarget.slot"
-    @close="showPicker = false"
+  <!-- Meal Editor sheet -->
+  <MealEditor
+    v-if="showEditor"
+    :day="editorTarget.day"
+    :slot="editorTarget.slot"
+    @close="showEditor = false"
   />
 
   <!-- Slot Action Sheet -->
@@ -298,22 +411,22 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
     >
       <div class="bg-white rounded-t-2xl w-full max-w-sm pb-[env(safe-area-inset-bottom)] shadow-xl">
         <div class="px-5 pt-5 pb-2">
-          <h3 class="text-base font-bold text-gray-800 truncate">{{ actionSlotSummary }}</h3>
+          <h3 class="text-base font-bold text-gray-800 truncate">{{ actionMealText || 'Meal' }}</h3>
           <p class="text-xs text-gray-400 capitalize mt-0.5">
             {{ actionTarget.day }} &middot; {{ actionTarget.slot }}
           </p>
         </div>
         <div class="px-3 pb-4 space-y-1">
           <button
-            @click="openPicker({ day: actionTarget.day, slot: actionTarget.slot }); showActions = false"
+            @click="openEditor({ day: actionTarget.day, slot: actionTarget.slot }); showActions = false"
             class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left active:bg-gray-50"
           >
             <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             <div>
-              <span class="text-sm font-medium text-gray-700">Add / Remove Meals</span>
-              <p class="text-xs text-gray-400">Manage meals in this slot</p>
+              <span class="text-sm font-medium text-gray-700">Edit Meal</span>
+              <p class="text-xs text-gray-400">Change text or linked recipes</p>
             </div>
           </button>
           <button
@@ -325,19 +438,19 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
             </svg>
             <div>
               <span class="text-sm font-medium text-gray-700">Swap</span>
-              <p class="text-xs text-gray-400">Exchange with another slot</p>
+              <p class="text-xs text-gray-400">Or long-press a meal to drag it</p>
             </div>
           </button>
           <button
-            @click="clearSlot"
+            @click="clearSlotAction"
             class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left active:bg-gray-50"
           >
             <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
             <div>
-              <span class="text-sm font-medium text-gray-700">Clear All</span>
-              <p class="text-xs text-gray-400">Remove all meals from this slot</p>
+              <span class="text-sm font-medium text-gray-700">Clear meal</span>
+              <p class="text-xs text-gray-400">Remove this meal entirely</p>
             </div>
           </button>
           <button
@@ -365,18 +478,8 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
         </p>
         <p class="text-xs italic text-gray-400 mb-5">Food is life.</p>
         <div class="flex gap-3">
-          <button
-            @click="showCopyConfirm = false"
-            class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmCopyWeek"
-            class="flex-1 py-3 bg-primary-500 text-white rounded-xl font-semibold text-sm"
-          >
-            Copy
-          </button>
+          <button @click="showCopyConfirm = false" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm">Cancel</button>
+          <button @click="confirmCopyWeek" class="flex-1 py-3 bg-primary-500 text-white rounded-xl font-semibold text-sm">Copy</button>
         </div>
       </div>
     </div>
@@ -391,22 +494,10 @@ watch(() => plannerStore.currentWeekStart, async (val) => {
     >
       <div class="bg-white rounded-2xl w-full max-w-sm p-5 mb-[env(safe-area-inset-bottom)]">
         <h3 class="text-lg font-bold text-gray-800 mb-2">Clear This Week?</h3>
-        <p class="text-sm text-gray-500 mb-5">
-          This will remove all meals from every slot this week. This cannot be undone.
-        </p>
+        <p class="text-sm text-gray-500 mb-5">This will remove all meals from every slot this week. This cannot be undone.</p>
         <div class="flex gap-3">
-          <button
-            @click="showClearConfirm = false"
-            class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmClearWeek"
-            class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold text-sm"
-          >
-            Clear All
-          </button>
+          <button @click="showClearConfirm = false" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm">Cancel</button>
+          <button @click="confirmClearWeek" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold text-sm">Clear All</button>
         </div>
       </div>
     </div>

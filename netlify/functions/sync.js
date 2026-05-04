@@ -22,7 +22,7 @@ export async function handler(event) {
   }
 
   try {
-    const { meals = [], plannerSlots = [], scans = [], settings = [] } = JSON.parse(event.body)
+    const { meals = [], plannerSlots = [], dayNotes = [], scans = [], settings = [] } = JSON.parse(event.body)
     const statements = []
 
     // Process meal upserts and deletes
@@ -62,13 +62,33 @@ export async function handler(event) {
         })
       } else {
         const s = item.data
+        // entry is the new MealEntry shape: { text, recipeIds, helperIds, prepTasks } | null
+        // mealIds kept as a denormalized list of recipeIds for backwards compat & queries
+        const entry = s.entry || null
+        const recipeIds = entry?.recipeIds || s.mealIds || []
         statements.push({
-          sql: `INSERT OR REPLACE INTO week_plans (week_start, day, slot_type, meal_ids, updated_at)
-                VALUES (?, ?, ?, ?, ?)`,
+          sql: `INSERT OR REPLACE INTO week_plans (week_start, day, slot_type, meal_ids, entry_data, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
             s.weekStart, s.day, s.slotType,
-            JSON.stringify(s.mealIds || []),
+            JSON.stringify(recipeIds),
+            entry ? JSON.stringify(entry) : '',
             s.updatedAt || new Date().toISOString()
+          ]
+        })
+      }
+    }
+
+    // Process day notes upserts
+    for (const item of dayNotes) {
+      if (item.action === 'upsert' && item.data) {
+        const d = item.data
+        statements.push({
+          sql: `INSERT OR REPLACE INTO day_notes (week_start, day, notes, updated_at)
+                VALUES (?, ?, ?, ?)`,
+          args: [
+            d.weekStart, d.day, d.notes || '',
+            d.updatedAt || new Date().toISOString()
           ]
         })
       }

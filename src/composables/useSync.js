@@ -71,14 +71,27 @@ export function useSync() {
         mealStore.meals = [...merged, ...localOnly]
       }
 
-      // Merge planner slots for current week
-      if (Array.isArray(plannerRes.data) && plannerRes.data.length > 0) {
+      // Merge planner slots + day notes for current week
+      if (plannerRes.data && (Array.isArray(plannerRes.data.slots) || Array.isArray(plannerRes.data))) {
         plannerStore.ensureWeekExists(plannerStore.currentWeekStart)
         const week = plannerStore.weekPlans[plannerStore.currentWeekStart]
-        for (const slot of plannerRes.data) {
-          if (week.days[slot.day]) {
-            week.days[slot.day][slot.slotType] = slot.mealIds || []
+        // New shape: { slots, notes }. Legacy shape: just an array of slots.
+        const slotsArr = Array.isArray(plannerRes.data) ? plannerRes.data : (plannerRes.data.slots || [])
+        for (const slot of slotsArr) {
+          const dayData = week.days[slot.day]
+          if (!dayData || slot.slotType === 'snack') continue
+          if (slot.entry) {
+            dayData[slot.slotType] = slot.entry
+          } else if (Array.isArray(slot.mealIds) && slot.mealIds.length > 0) {
+            // Legacy data — wrap in MealEntry shape with empty text
+            dayData[slot.slotType] = { text: '', recipeIds: slot.mealIds, helperIds: [], prepTasks: [] }
+          } else {
+            dayData[slot.slotType] = null
           }
+        }
+        const notesArr = (plannerRes.data && plannerRes.data.notes) || []
+        for (const n of notesArr) {
+          if (week.days[n.day]) week.days[n.day].notes = n.notes || ''
         }
       }
 
@@ -148,6 +161,7 @@ export function useSync() {
       // Group queue items by type into the sync payload
       const meals = []
       const plannerSlots = []
+      const dayNotes = []
       const scans = []
       const settings = []
 
@@ -165,6 +179,9 @@ export function useSync() {
           case 'slot_delete':
             plannerSlots.push({ action: 'delete', ...item.data })
             break
+          case 'day_notes_upsert':
+            dayNotes.push({ action: 'upsert', data: item.data })
+            break
           case 'scan_upsert':
             scans.push({ action: 'upsert', data: item.data })
             break
@@ -177,7 +194,7 @@ export function useSync() {
         }
       }
 
-      await axios.post(`${FUNCTIONS_BASE}/sync`, { meals, plannerSlots, scans, settings })
+      await axios.post(`${FUNCTIONS_BASE}/sync`, { meals, plannerSlots, dayNotes, scans, settings })
 
       // Clear queue on success
       saveQueue([])

@@ -13,13 +13,13 @@ export const useSettingsStore = defineStore('settings', {
     ],
 
     assignments: {
-      sunday:    { breakfast: 'F', lunch: 'F', dinner: 'S', snack: null },
-      monday:    { breakfast: 'R', lunch: 'S', dinner: 'R', snack: null },
-      tuesday:   { breakfast: 'R', lunch: 'S', dinner: 'R', snack: null },
-      wednesday: { breakfast: 'F', lunch: 'S', dinner: 'F', snack: null },
-      thursday:  { breakfast: 'F', lunch: 'R', dinner: 'F', snack: null },
-      friday:    { breakfast: 'R', lunch: 'F', dinner: 'R', snack: null },
-      saturday:  { breakfast: 'A', lunch: 'A', dinner: 'A', snack: null }
+      monday:    { breakfast: 'R', lunch: 'S', dinner: 'R' },
+      tuesday:   { breakfast: 'R', lunch: 'S', dinner: 'R' },
+      wednesday: { breakfast: 'F', lunch: 'S', dinner: 'F' },
+      thursday:  { breakfast: 'F', lunch: 'R', dinner: 'F' },
+      friday:    { breakfast: 'R', lunch: 'F', dinner: 'R' },
+      saturday:  { breakfast: 'A', lunch: 'A', dinner: 'A' },
+      sunday:    { breakfast: 'F', lunch: 'F', dinner: 'S' }
     },
 
     flaggedIngredients: [...DEFAULT_FLAGGED_KEYWORDS],
@@ -202,5 +202,17 @@ export const useSettingsStore = defineStore('settings', {
     }
   },
 
-  persist: true
+  persist: {
+    afterHydrate(ctx) {
+      // Drop legacy `snack` slot from persisted assignments (no longer in product)
+      const a = ctx.store.assignments
+      if (a && typeof a === 'object') {
+        for (const day of Object.keys(a)) {
+          if (a[day] && 'snack' in a[day]) {
+            delete a[day].snack
+          }
+        }
+      }
+    }
+  }
 })

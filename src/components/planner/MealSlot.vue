@@ -6,27 +6,37 @@ import { useSettingsStore } from '../../stores/settings'
 const props = defineProps({
   day: { type: String, required: true },
   slot: { type: String, required: true },
-  mealIds: { type: Array, default: () => [] },
+  /** MealEntry | null — { text, recipeIds, helperIds, prepTasks } */
+  entry: { type: Object, default: null },
   swapMode: { type: Boolean, default: false },
-  isSwapSource: { type: Boolean, default: false }
+  isSwapSource: { type: Boolean, default: false },
+  /** When this slot is a valid drop target during a drag */
+  isDropTarget: { type: Boolean, default: false },
+  isDragSource: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['pick', 'slot-action', 'swap-target', 'remove-meal'])
+const emit = defineEmits(['edit', 'slot-action', 'swap-target', 'clear', 'drag-start'])
 
 const mealStore = useMealStore()
 const settingsStore = useSettingsStore()
 
-const meals = computed(() => {
-  return props.mealIds
-    .map((id) => mealStore.getMealById(id))
-    .filter(Boolean)
+const isEmpty = computed(() => !props.entry || (!props.entry.text?.trim() && (!props.entry.recipeIds || props.entry.recipeIds.length === 0)))
+
+const linkedRecipes = computed(() => {
+  const ids = props.entry?.recipeIds || []
+  return ids.map((id) => mealStore.getMealById(id)).filter(Boolean)
 })
 
-const isEmpty = computed(() => meals.value.length === 0)
+/** Display name: explicit text wins; otherwise fall back to joined recipe names. */
+const displayText = computed(() => {
+  if (props.entry?.text?.trim()) return props.entry.text.trim()
+  return linkedRecipes.value.map((r) => r.name).join(' + ')
+})
 
 const codeForSlot = computed(() => settingsStore.getCodeForSlot(props.day, props.slot))
 
-/** White text on dark backgrounds, dark text on light backgrounds */
+const slotInitial = { breakfast: 'B', lunch: 'L', dinner: 'D' }
+
 function codeFontColor(bgColor) {
   if (!bgColor) return '#fff'
   const hex = bgColor.replace('#', '')
@@ -37,29 +47,12 @@ function codeFontColor(bgColor) {
   return luminance > 0.6 ? '#1f2937' : '#ffffff'
 }
 
-const slotLabels = {
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  dinner: 'Dinner',
-  snack: 'Snack'
-}
-
-const categoryDotColors = {
-  breakfast: 'bg-amber-400',
-  lunch: 'bg-sky-400',
-  dinner: 'bg-violet-400',
-  snack: 'bg-emerald-400'
-}
-
 function handleTap() {
   if (props.swapMode) {
-    if (!props.isSwapSource) {
-      emit('swap-target', { day: props.day, slot: props.slot })
-    }
+    if (!props.isSwapSource) emit('swap-target', { day: props.day, slot: props.slot })
     return
   }
-
-  emit('pick', { day: props.day, slot: props.slot })
+  emit('edit', { day: props.day, slot: props.slot })
 }
 
 function handleSlotAction(e) {
@@ -68,137 +61,107 @@ function handleSlotAction(e) {
   emit('slot-action', { day: props.day, slot: props.slot })
 }
 
-function handleRemoveMeal(e, mealId) {
+function handleClear(e) {
   e.stopPropagation()
-  emit('remove-meal', { day: props.day, slot: props.slot, mealId })
+  emit('clear', { day: props.day, slot: props.slot })
+}
+
+function handlePointerDown(e) {
+  if (props.swapMode || isEmpty.value) return
+  emit('drag-start', { day: props.day, slot: props.slot, pointerEvent: e })
 }
 </script>
 
 <template>
   <div
     @click="handleTap"
-    class="w-full text-left rounded-xl px-3 py-2.5 transition-all duration-150 cursor-pointer"
+    @pointerdown="handlePointerDown"
+    :data-drop-day="day"
+    :data-drop-slot="slot"
+    class="w-full text-left rounded-xl px-3 py-2.5 transition-all duration-150 cursor-pointer select-none"
     :class="[
-      isSwapSource
-        ? 'bg-primary-100 border-2 border-primary-500 ring-2 ring-primary-500/20'
-        : swapMode
-          ? 'bg-amber-50 border-2 border-dashed border-amber-400 hover:bg-amber-100'
-          : isEmpty
-            ? 'bg-surface-muted border border-dashed border-gray-300 active:scale-[0.98]'
-            : 'bg-surface-card border border-gray-100 active:scale-[0.98]'
+      isSwapSource || isDragSource
+        ? 'bg-primary-100 border-2 border-primary-500 ring-2 ring-primary-500/20 opacity-60'
+        : isDropTarget
+          ? 'bg-emerald-50 border-2 border-dashed border-emerald-400'
+          : swapMode
+            ? 'bg-amber-50 border-2 border-dashed border-amber-400'
+            : isEmpty
+              ? 'bg-surface-muted border border-dashed border-gray-300 active:scale-[0.98]'
+              : 'bg-surface-card border border-gray-100 active:scale-[0.98]'
     ]"
+    :style="{ touchAction: 'manipulation' }"
   >
-    <div class="flex gap-4 min-h-9">
-      <!-- Slot label -->
-      <span
-        class="text-[11px] font-semibold uppercase tracking-wider w-18 shrink-0 pt-1"
-        :class="swapMode && !isSwapSource ? 'text-amber-500' : 'text-gray-400'"
-      >
-        {{ slotLabels[slot] }}
+    <!-- Empty state — small subtle "+ B/L/D" -->
+    <div v-if="isEmpty" class="flex items-center gap-2 min-h-9">
+      <span class="text-[11px] font-bold text-gray-400 w-5">{{ slotInitial[slot] }}</span>
+      <svg v-if="!swapMode" class="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      <span class="text-sm text-gray-300">
+        {{ swapMode ? 'Tap to swap here' : 'Add meal' }}
       </span>
+    </div>
 
-      <!-- Meal code badge -->
-      <span
-        v-if="codeForSlot"
-        class="w-5.5 h-5.5 rounded-full shrink-0 flex items-center justify-center self-center"
-        :style="{ backgroundColor: codeForSlot.color, color: codeFontColor(codeForSlot.color) }"
-      >
-        <span class="text-[11px] font-bold leading-none">{{ codeForSlot.letter }}</span>
-      </span>
-
-      <!-- Empty slot -->
-      <div v-if="isEmpty" class="flex items-center gap-2">
-        <svg
-          v-if="!swapMode"
-          class="w-4 h-4 text-gray-300"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    <!-- Filled state — meal text is the dominant element -->
+    <div v-else class="flex items-start gap-2.5">
+      <!-- Left rail: B/L/D label and code badge stacked -->
+      <div class="flex flex-col items-center gap-1.5 shrink-0 pt-0.5">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ slotInitial[slot] }}</span>
+        <span
+          v-if="codeForSlot"
+          class="w-5 h-5 rounded-full flex items-center justify-center"
+          :style="{ backgroundColor: codeForSlot.color, color: codeFontColor(codeForSlot.color) }"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        <span class="text-sm text-gray-300">
-          {{ swapMode ? 'Tap to swap here' : 'Add meal' }}
+          <span class="text-[10px] font-bold leading-none">{{ codeForSlot.letter }}</span>
         </span>
       </div>
 
-      <!-- Filled slot: single meal -->
-      <div v-else-if="meals.length === 1" class="flex items-center flex-1 min-w-0">
-        <span
-          class="w-2 h-2 rounded-full shrink-0"
-          :class="categoryDotColors[meals[0].category] || 'bg-gray-300'"
-        />
-        <span class="text-sm text-gray-700 font-medium truncate flex-1 ml-2">{{ meals[0].name }}</span>
-
-        <!-- Action buttons — 44px targets with 8px gap -->
-        <div v-if="!swapMode" class="flex items-center gap-2 shrink-0 ml-2">
-          <button
-            @click="(e) => handleRemoveMeal(e, mealIds[0])"
-            class="w-11 h-11 flex items-center justify-center rounded-lg text-gray-300 active:text-red-400 active:bg-red-50"
+      <!-- Main: meal text large + linked recipe chips -->
+      <div class="flex-1 min-w-0">
+        <p class="text-base font-semibold text-gray-800 leading-tight break-words">{{ displayText }}</p>
+        <div v-if="linkedRecipes.length && entry.text?.trim()" class="flex flex-wrap gap-1 mt-1.5">
+          <span
+            v-for="r in linkedRecipes"
+            :key="r.id"
+            class="inline-flex items-center gap-1 text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded-full max-w-full"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-          </button>
-          <button
-            @click="handleSlotAction"
-            class="w-11 h-11 flex items-center justify-center rounded-lg text-gray-300 active:text-gray-500 active:bg-gray-100"
-          >
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
-            </svg>
-          </button>
+            <span class="truncate">{{ r.name }}</span>
+          </span>
         </div>
       </div>
 
-      <!-- Filled slot: multiple meals — stacked list -->
-      <div v-else class="flex-1 min-w-0">
-        <!-- Each meal row: 44px tall touch target for the × -->
-        <div class="space-y-0.5">
-          <div
-            v-for="(meal, idx) in meals"
-            :key="mealIds[idx]"
-            class="flex items-center min-h-11"
-          >
-            <span
-              class="w-1.5 h-1.5 rounded-full shrink-0"
-              :class="categoryDotColors[meal.category] || 'bg-gray-300'"
-            />
-            <span class="text-[13px] text-gray-700 font-medium truncate flex-1 ml-2">{{ meal.name }}</span>
-            <button
-              v-if="!swapMode"
-              @click="(e) => handleRemoveMeal(e, mealIds[idx])"
-              class="w-11 h-11 flex items-center justify-center rounded-lg text-gray-300 active:text-red-400 active:bg-red-50 shrink-0 ml-1"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Slot-level options — separated from meal rows with border -->
-        <div v-if="!swapMode" class="flex justify-end border-t border-gray-100 mt-1 pt-1">
-          <button
-            @click="handleSlotAction"
-            class="h-11 px-3 flex items-center gap-1.5 rounded-lg text-gray-400 active:text-gray-600 active:bg-gray-100 text-xs font-medium"
-          >
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="5" cy="12" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="19" cy="12" r="2" />
-            </svg>
-            Options
-          </button>
-        </div>
+      <!-- Action rail: clear + options -->
+      <div v-if="!swapMode" class="flex items-center gap-1 shrink-0">
+        <button
+          @click="handleClear"
+          class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 active:text-red-400 active:bg-red-50"
+          aria-label="Clear meal"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <button
+          @click="handleSlotAction"
+          class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 active:text-gray-500 active:bg-gray-100"
+          aria-label="Slot options"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
       </div>
 
       <!-- Swap mode target indicator -->
       <svg
         v-if="swapMode && !isSwapSource"
-        class="w-5 h-5 text-amber-400 ml-auto shrink-0 self-center"
+        class="w-5 h-5 text-amber-400 shrink-0 self-center"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

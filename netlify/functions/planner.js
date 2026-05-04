@@ -20,7 +20,7 @@ export async function handler(event) {
   try {
     switch (event.httpMethod) {
       case 'GET':
-        return await getWeekSlots(event.queryStringParameters?.weekStart)
+        return await getWeek(event.queryStringParameters?.weekStart)
       case 'POST':
         return await upsertSlot(JSON.parse(event.body))
       case 'DELETE':
@@ -33,25 +33,37 @@ export async function handler(event) {
   }
 }
 
-async function getWeekSlots(weekStart) {
+async function getWeek(weekStart) {
   if (!weekStart) {
     return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'weekStart query param is required' }) }
   }
 
-  const result = await db.execute({
-    sql: 'SELECT * FROM week_plans WHERE week_start = ?',
-    args: [weekStart]
+  const [slotsRes, notesRes] = await Promise.all([
+    db.execute({ sql: 'SELECT * FROM week_plans WHERE week_start = ?', args: [weekStart] }),
+    db.execute({ sql: 'SELECT * FROM day_notes WHERE week_start = ?', args: [weekStart] }).catch(() => ({ rows: [] }))
+  ])
+
+  const slots = slotsRes.rows.map((row) => {
+    let entry = null
+    try { entry = row.entry_data ? JSON.parse(row.entry_data) : null } catch { entry = null }
+    return {
+      weekStart: row.week_start,
+      day: row.day,
+      slotType: row.slot_type,
+      entry,
+      mealIds: JSON.parse(row.meal_ids || '[]'),
+      updatedAt: row.updated_at
+    }
   })
 
-  const slots = result.rows.map((row) => ({
+  const notes = notesRes.rows.map((row) => ({
     weekStart: row.week_start,
     day: row.day,
-    slotType: row.slot_type,
-    mealIds: JSON.parse(row.meal_ids || '[]'),
+    notes: row.notes || '',
     updatedAt: row.updated_at
   }))
 
-  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(slots) }
+  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ slots, notes }) }
 }
 
 async function upsertSlot(data) {
@@ -59,14 +71,18 @@ async function upsertSlot(data) {
     return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'weekStart, day, and slotType are required' }) }
   }
 
+  const entry = data.entry || null
+  const recipeIds = entry?.recipeIds || data.mealIds || []
+
   await db.execute({
-    sql: `INSERT OR REPLACE INTO week_plans (week_start, day, slot_type, meal_ids, updated_at)
-          VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT OR REPLACE INTO week_plans (week_start, day, slot_type, meal_ids, entry_data, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)`,
     args: [
       data.weekStart,
       data.day,
       data.slotType,
-      JSON.stringify(data.mealIds || []),
+      JSON.stringify(recipeIds),
+      entry ? JSON.stringify(entry) : '',
       data.updatedAt || new Date().toISOString()
     ]
   })

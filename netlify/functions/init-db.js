@@ -40,9 +40,17 @@ export async function handler(event) {
         week_start TEXT NOT NULL,
         day TEXT NOT NULL,
         slot_type TEXT NOT NULL,
-        meal_ids TEXT NOT NULL DEFAULT '[]',
+        meal_ids TEXT NOT NULL DEFAULT '[]',           -- legacy: array of recipe IDs
+        entry_data TEXT NOT NULL DEFAULT '',           -- new: JSON-encoded MealEntry
         updated_at TEXT NOT NULL,
         PRIMARY KEY (week_start, day, slot_type)
+      )`,
+      `CREATE TABLE IF NOT EXISTS day_notes (
+        week_start TEXT NOT NULL,
+        day TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (week_start, day)
       )`,
       `CREATE TABLE IF NOT EXISTS scan_history (
         barcode TEXT PRIMARY KEY,
