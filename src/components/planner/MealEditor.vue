@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMealStore } from '../../stores/meals'
 import { usePlannerStore } from '../../stores/planner'
+import { useSettingsStore } from '../../stores/settings'
 import { useBodyScrollLock } from '../../composables/useBodyScrollLock'
 
 const props = defineProps({
@@ -17,17 +18,26 @@ useBodyScrollLock()
 const router = useRouter()
 const mealStore = useMealStore()
 const plannerStore = usePlannerStore()
+const settingsStore = useSettingsStore()
 
 // Working copy of the meal entry — committed on Save
 const initial = computed(() => plannerStore.currentWeek.days[props.day]?.[props.slot] || null)
 
 const text = ref('')
 const linkedRecipeIds = ref([])
+const linkedHelperIds = ref([])
 
 watch(() => initial.value, (val) => {
   text.value = val?.text || ''
   linkedRecipeIds.value = [...(val?.recipeIds || [])]
+  linkedHelperIds.value = [...(val?.helperIds || [])]
 }, { immediate: true })
+
+function toggleHelper(id) {
+  const idx = linkedHelperIds.value.indexOf(id)
+  if (idx === -1) linkedHelperIds.value.push(id)
+  else linkedHelperIds.value.splice(idx, 1)
+}
 
 const dayLabels = {
   monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
@@ -60,7 +70,7 @@ function save() {
   plannerStore.setMeal(props.day, props.slot, {
     text: text.value,
     recipeIds: linkedRecipeIds.value,
-    helperIds: initial.value?.helperIds || [],
+    helperIds: linkedHelperIds.value,
     prepTasks: initial.value?.prepTasks || []
   })
   emit('close')
@@ -180,6 +190,23 @@ function createNewRecipe() {
                 <p v-if="recipeResults.length === 0" class="text-[11px] text-gray-400 text-center py-2">No matching recipes</p>
               </div>
             </div>
+          </div>
+
+          <!-- Helpers (kids helping) -->
+          <div v-if="settingsStore.helpers.length">
+            <label class="block text-xs font-medium text-gray-500 mb-1.5">Kids helping</label>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-for="helper in settingsStore.helpers"
+                :key="helper.id"
+                @click="toggleHelper(helper.id)"
+                class="w-10 h-10 rounded-full transition-all active:scale-90"
+                :class="linkedHelperIds.includes(helper.id) ? 'ring-4 ring-offset-2 ring-gray-300 scale-110' : 'opacity-50'"
+                :style="{ backgroundColor: helper.color }"
+                :aria-label="linkedHelperIds.includes(helper.id) ? 'Helper selected' : 'Tap to select helper'"
+              />
+            </div>
+            <p v-if="linkedHelperIds.length === 0" class="text-[11px] text-gray-400 italic mt-1.5">Tap a circle to mark a helper. Long-press a meal to drag it later.</p>
           </div>
 
           <!-- Clear button -->

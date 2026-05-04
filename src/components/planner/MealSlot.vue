@@ -27,6 +27,11 @@ const linkedRecipes = computed(() => {
   return ids.map((id) => mealStore.getMealById(id)).filter(Boolean)
 })
 
+const linkedHelpers = computed(() => {
+  const ids = props.entry?.helperIds || []
+  return ids.map((id) => settingsStore.helpers.find((h) => h.id === id)).filter(Boolean)
+})
+
 /** Display name: explicit text wins; otherwise fall back to joined recipe names. */
 const displayText = computed(() => {
   if (props.entry?.text?.trim()) return props.entry.text.trim()
@@ -117,9 +122,20 @@ function handlePointerDown(e) {
         </span>
       </div>
 
-      <!-- Main: meal text large + linked recipe chips -->
+      <!-- Main: meal text large + helper dots + linked recipe chips -->
       <div class="flex-1 min-w-0">
-        <p class="text-base font-semibold text-gray-800 leading-tight break-words">{{ displayText }}</p>
+        <div class="flex items-start gap-1.5">
+          <p class="text-base font-semibold text-gray-800 leading-tight break-words flex-1 min-w-0">{{ displayText }}</p>
+          <!-- Helper color dots — stacked tight on the right of the meal text -->
+          <div v-if="linkedHelpers.length" class="flex -space-x-1 shrink-0 pt-1">
+            <span
+              v-for="h in linkedHelpers"
+              :key="h.id"
+              class="w-3.5 h-3.5 rounded-full ring-2 ring-white shadow-sm"
+              :style="{ backgroundColor: h.color }"
+            />
+          </div>
+        </div>
         <div v-if="linkedRecipes.length && entry.text?.trim()" class="flex flex-wrap gap-1 mt-1.5">
           <span
             v-for="r in linkedRecipes"

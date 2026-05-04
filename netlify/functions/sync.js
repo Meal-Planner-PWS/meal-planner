@@ -148,6 +148,12 @@ export async function handler(event) {
             args: ['categories', JSON.stringify(item.data.categories)]
           })
         }
+        if (item.data.helpers !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['helpers', JSON.stringify(item.data.helpers)]
+          })
+        }
       }
     }
 

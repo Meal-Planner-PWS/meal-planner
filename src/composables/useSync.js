@@ -119,6 +119,9 @@ export function useSync() {
         if (Array.isArray(settingsRes.data.categories) && settingsRes.data.categories.length > 0) {
           settingsStore.categories = settingsRes.data.categories
         }
+        if (Array.isArray(settingsRes.data.helpers)) {
+          settingsStore.helpers = settingsRes.data.helpers
+        }
       }
 
       lastSyncError.value = null

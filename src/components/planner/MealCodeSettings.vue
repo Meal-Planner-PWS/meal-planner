@@ -17,9 +17,16 @@ const activeTab = ref(props.defaultTab)
 const TABS = [
   { key: 'codes', label: 'Meal Codes' },
   { key: 'categories', label: 'Categories' },
+  { key: 'helpers', label: 'Helpers' },
   { key: 'ingredients', label: 'Ingredients' },
   { key: 'cleanify', label: 'Cleanify' },
   { key: 'support', label: 'Support' }
+]
+
+// --- Helpers state ---
+const HELPER_COLORS = [
+  '#9B59B6', '#1ABC9C', '#E74C3C', '#3498DB',
+  '#27AE60', '#E67E22', '#F1C40F', '#34495E'
 ]
 
 // --- Categories state ---
@@ -386,6 +393,52 @@ function codeFontColor(bgColor) {
             </div>
             <p v-if="categoryDuplicateWarning" class="text-amber-500 text-xs">A category with that name already exists</p>
             <p class="text-[10px] text-gray-400 mt-3">"All" is shown automatically at the end of the filter list and can't be edited.</p>
+          </div>
+
+          <!-- Tab: Helpers (color-only) -->
+          <div v-if="activeTab === 'helpers'">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Helpers</h3>
+            <p class="text-[10px] text-gray-400 mb-3">Pick a color for each kid. Tap a meal to mark which helper(s) are cooking.</p>
+
+            <div class="space-y-2 mb-3">
+              <div
+                v-for="helper in settingsStore.helpers"
+                :key="helper.id"
+                class="flex items-center gap-2 bg-surface-muted rounded-xl px-3 py-2"
+              >
+                <span
+                  class="w-7 h-7 rounded-full shrink-0 ring-2 ring-white shadow-sm"
+                  :style="{ backgroundColor: helper.color }"
+                />
+                <div class="flex flex-wrap gap-1 flex-1">
+                  <button
+                    v-for="color in HELPER_COLORS"
+                    :key="color"
+                    @click="settingsStore.updateHelperColor(helper.id, color)"
+                    class="w-5 h-5 rounded-full transition-transform active:scale-90"
+                    :class="helper.color === color ? 'ring-2 ring-gray-700 scale-110' : ''"
+                    :style="{ backgroundColor: color }"
+                  />
+                </div>
+                <button
+                  @click="settingsStore.removeHelper(helper.id)"
+                  class="p-1 text-red-300 active:text-red-500 shrink-0"
+                  aria-label="Remove helper"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <button
+              @click="settingsStore.addHelper(HELPER_COLORS.find((c) => !settingsStore.helpers.some((h) => h.color === c)) || HELPER_COLORS[0])"
+              class="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-400 active:bg-gray-50"
+            >
+              + Add Helper
+            </button>
+            <p v-if="!settingsStore.helpers.length" class="text-[11px] text-gray-400 italic mt-3 text-center">No helpers yet. Add one above.</p>
           </div>
 
           <!-- Tab: Flagged Ingredients -->

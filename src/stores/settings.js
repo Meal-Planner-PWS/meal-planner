@@ -38,6 +38,16 @@ export const useSettingsStore = defineStore('settings', {
       { value: 'snack', label: 'Snack' },
       { value: 'dessert', label: 'Dessert' },
       { value: 'drink', label: 'Drink' }
+    ],
+
+    /**
+     * Helpers — color-only identifiers for "kids helping with this meal".
+     * Each helper has just an id and a color (no names per design decision).
+     * Default: two distinct colors so the feature is usable out of the box.
+     */
+    helpers: [
+      { id: 'h1', color: '#9B59B6' },
+      { id: 'h2', color: '#1ABC9C' }
     ]
   }),
 
@@ -187,6 +197,30 @@ export const useSettingsStore = defineStore('settings', {
       this._syncSettings()
     },
 
+    /** Add a helper with the given color. Returns the new helper object. */
+    addHelper(color) {
+      const id = 'h' + Math.random().toString(36).slice(2, 9)
+      const helper = { id, color: color || '#9B59B6' }
+      this.helpers.push(helper)
+      this._syncSettings()
+      return helper
+    },
+
+    /** Update a helper's color */
+    updateHelperColor(id, color) {
+      const h = this.helpers.find((x) => x.id === id)
+      if (h) {
+        h.color = color
+        this._syncSettings()
+      }
+    },
+
+    /** Remove a helper by id */
+    removeHelper(id) {
+      this.helpers = this.helpers.filter((h) => h.id !== id)
+      this._syncSettings()
+    },
+
     _syncSettings() {
       try {
         useSync().queueChange('settings_upsert', {
@@ -194,7 +228,8 @@ export const useSettingsStore = defineStore('settings', {
           assignments: this.assignments,
           flaggedIngredients: this.flaggedIngredients,
           cleanifyRules: this.cleanifyRules,
-          categories: this.categories
+          categories: this.categories,
+          helpers: this.helpers
         })
       } catch (e) {
         console.warn('[settings] sync queue failed:', e)
