@@ -129,7 +129,8 @@ export const usePlannerStore = defineStore('planner', {
 
   actions: {
     ensureWeekExists(weekStart) {
-      if (!this.weekPlans[weekStart]) {
+      const isNewWeek = !this.weekPlans[weekStart]
+      if (isNewWeek) {
         this.weekPlans[weekStart] = { weekStart, days: createEmptyWeek() }
       }
       // Defensive: ensure all days have the new shape
@@ -137,6 +138,27 @@ export const usePlannerStore = defineStore('planner', {
       for (const day of DAYS) {
         if (!days[day]) days[day] = emptyDay()
         if (days[day].notes === undefined) days[day].notes = ''
+      }
+
+      // Auto-apply recurring meal shortcuts ONLY when a brand-new week is created.
+      // (Lazy-load settings store to avoid circular import issues.)
+      if (isNewWeek) {
+        try {
+          // Dynamic import keeps this hook free of top-level circular deps
+          import('./settings').then(({ useSettingsStore }) => {
+            const settingsStore = useSettingsStore()
+            const shortcuts = settingsStore.mealShortcuts || []
+            for (const s of shortcuts) {
+              if (!s.recurringDay || !s.recurringSlot) continue
+              const dayData = this.weekPlans[weekStart]?.days[s.recurringDay]
+              if (!dayData) continue
+              // Don't overwrite if the user already set something
+              if (dayData[s.recurringSlot]) continue
+              dayData[s.recurringSlot] = makeMealEntry(s.expansion, [])
+              this._queueSlot(weekStart, s.recurringDay, s.recurringSlot)
+            }
+          }).catch(() => { /* settings not yet hydrated — skip */ })
+        } catch { /* noop */ }
       }
     },
 

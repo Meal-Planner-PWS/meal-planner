@@ -122,6 +122,9 @@ export function useSync() {
         if (Array.isArray(settingsRes.data.helpers)) {
           settingsStore.helpers = settingsRes.data.helpers
         }
+        if (Array.isArray(settingsRes.data.meal_shortcuts)) {
+          settingsStore.mealShortcuts = settingsRes.data.meal_shortcuts
+        }
       }
 
       lastSyncError.value = null

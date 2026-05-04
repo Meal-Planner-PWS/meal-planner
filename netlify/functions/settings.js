@@ -89,6 +89,13 @@ async function saveSettings(data) {
     })
   }
 
+  if (data.mealShortcuts !== undefined) {
+    statements.push({
+      sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      args: ['meal_shortcuts', JSON.stringify(data.mealShortcuts)]
+    })
+  }
+
   if (statements.length > 0) {
     await db.batch(statements)
   }

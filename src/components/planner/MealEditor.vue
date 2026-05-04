@@ -132,7 +132,7 @@ function createNewRecipe() {
 
         <!-- Body -->
         <div class="flex-1 overflow-y-auto px-4 pb-[env(safe-area-inset-bottom)] pb-6 space-y-4">
-          <!-- Meal text -->
+          <!-- Meal text + shortcut quick-picks -->
           <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">What's for {{ slotLabels[slot].toLowerCase() }}?</label>
             <textarea
@@ -142,6 +142,19 @@ function createNewRecipe() {
               class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
               autofocus
             />
+            <!-- Shortcut chips (tap to fill the text input) -->
+            <div v-if="settingsStore.mealShortcuts.length" class="flex flex-wrap gap-1.5 mt-2">
+              <button
+                v-for="s in settingsStore.mealShortcuts"
+                :key="s.id"
+                @click="text = s.expansion"
+                class="inline-flex items-center gap-1.5 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full text-xs active:scale-95 transition-transform"
+                :title="s.expansion"
+              >
+                <span class="font-bold tracking-wider">{{ s.abbreviation }}</span>
+                <span class="text-primary-500/70 truncate max-w-32">{{ s.expansion }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Linked recipes -->

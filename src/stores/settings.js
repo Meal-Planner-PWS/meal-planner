@@ -48,7 +48,17 @@ export const useSettingsStore = defineStore('settings', {
     helpers: [
       { id: 'h1', color: '#9B59B6' },
       { id: 'h2', color: '#1ABC9C' }
-    ]
+    ],
+
+    /**
+     * Meal shortcuts — quick-pick tags that expand to a full meal text.
+     * Each shortcut: { id, abbreviation, expansion, recurringDay, recurringSlot }
+     * - abbreviation: short label like "TT"
+     * - expansion: full text like "Taco Tuesday"
+     * - recurringDay: 'monday'..'sunday' | null (when set, auto-fills new weeks)
+     * - recurringSlot: 'breakfast' | 'lunch' | 'dinner' (default 'dinner')
+     */
+    mealShortcuts: []
   }),
 
   getters: {
@@ -221,6 +231,41 @@ export const useSettingsStore = defineStore('settings', {
       this._syncSettings()
     },
 
+    /** Add a meal shortcut */
+    addMealShortcut({ abbreviation, expansion, recurringDay = null, recurringSlot = 'dinner' }) {
+      const ab = (abbreviation || '').trim()
+      const ex = (expansion || '').trim()
+      if (!ab || !ex) return false
+      // Don't duplicate by abbreviation (case-insensitive)
+      if (this.mealShortcuts.some((s) => s.abbreviation.toLowerCase() === ab.toLowerCase())) return false
+      this.mealShortcuts.push({
+        id: 's' + Math.random().toString(36).slice(2, 10),
+        abbreviation: ab,
+        expansion: ex,
+        recurringDay: recurringDay || null,
+        recurringSlot: recurringSlot || 'dinner'
+      })
+      this._syncSettings()
+      return true
+    },
+
+    /** Update an existing shortcut */
+    updateMealShortcut(id, updates) {
+      const s = this.mealShortcuts.find((x) => x.id === id)
+      if (!s) return
+      if (typeof updates.abbreviation === 'string') s.abbreviation = updates.abbreviation.trim()
+      if (typeof updates.expansion === 'string') s.expansion = updates.expansion.trim()
+      if ('recurringDay' in updates) s.recurringDay = updates.recurringDay || null
+      if (typeof updates.recurringSlot === 'string') s.recurringSlot = updates.recurringSlot
+      this._syncSettings()
+    },
+
+    /** Remove a meal shortcut */
+    removeMealShortcut(id) {
+      this.mealShortcuts = this.mealShortcuts.filter((s) => s.id !== id)
+      this._syncSettings()
+    },
+
     _syncSettings() {
       try {
         useSync().queueChange('settings_upsert', {
@@ -229,7 +274,8 @@ export const useSettingsStore = defineStore('settings', {
           flaggedIngredients: this.flaggedIngredients,
           cleanifyRules: this.cleanifyRules,
           categories: this.categories,
-          helpers: this.helpers
+          helpers: this.helpers,
+          mealShortcuts: this.mealShortcuts
         })
       } catch (e) {
         console.warn('[settings] sync queue failed:', e)

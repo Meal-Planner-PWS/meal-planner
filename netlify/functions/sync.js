@@ -154,6 +154,12 @@ export async function handler(event) {
             args: ['helpers', JSON.stringify(item.data.helpers)]
           })
         }
+        if (item.data.mealShortcuts !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['meal_shortcuts', JSON.stringify(item.data.mealShortcuts)]
+          })
+        }
       }
     }
 

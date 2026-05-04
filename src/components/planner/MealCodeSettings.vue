@@ -18,10 +18,35 @@ const TABS = [
   { key: 'codes', label: 'Meal Codes' },
   { key: 'categories', label: 'Categories' },
   { key: 'helpers', label: 'Helpers' },
+  { key: 'shortcuts', label: 'Shortcuts' },
   { key: 'ingredients', label: 'Ingredients' },
   { key: 'cleanify', label: 'Cleanify' },
   { key: 'support', label: 'Support' }
 ]
+
+// --- Shortcuts state ---
+const newShortcut = ref({ abbreviation: '', expansion: '', recurringDay: '', recurringSlot: 'dinner' })
+const shortcutDuplicateWarning = ref(false)
+
+const SHORTCUT_DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const SHORTCUT_DAY_SHORT = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' }
+const SHORTCUT_SLOTS = ['breakfast', 'lunch', 'dinner']
+const SHORTCUT_SLOT_LABEL = { breakfast: 'B', lunch: 'L', dinner: 'D' }
+
+function addShortcut() {
+  shortcutDuplicateWarning.value = false
+  const added = settingsStore.addMealShortcut({
+    abbreviation: newShortcut.value.abbreviation,
+    expansion: newShortcut.value.expansion,
+    recurringDay: newShortcut.value.recurringDay || null,
+    recurringSlot: newShortcut.value.recurringSlot || 'dinner'
+  })
+  if (!added) {
+    shortcutDuplicateWarning.value = true
+    return
+  }
+  newShortcut.value = { abbreviation: '', expansion: '', recurringDay: '', recurringSlot: 'dinner' }
+}
 
 // --- Helpers state ---
 const HELPER_COLORS = [
@@ -439,6 +464,103 @@ function codeFontColor(bgColor) {
               + Add Helper
             </button>
             <p v-if="!settingsStore.helpers.length" class="text-[11px] text-gray-400 italic mt-3 text-center">No helpers yet. Add one above.</p>
+          </div>
+
+          <!-- Tab: Meal Shortcuts -->
+          <div v-if="activeTab === 'shortcuts'">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Meal Shortcuts</h3>
+            <p class="text-[10px] text-gray-400 mb-3">Quick-pick tags that expand to a full meal. Optionally pin one to a day to auto-fill new weeks.</p>
+
+            <!-- Existing shortcuts -->
+            <div v-if="settingsStore.mealShortcuts.length" class="space-y-2 mb-3">
+              <div
+                v-for="s in settingsStore.mealShortcuts"
+                :key="s.id"
+                class="bg-surface-muted rounded-xl p-2.5 space-y-2"
+              >
+                <div class="flex items-center gap-2">
+                  <input
+                    :value="s.abbreviation"
+                    @input="settingsStore.updateMealShortcut(s.id, { abbreviation: $event.target.value })"
+                    placeholder="TT"
+                    class="w-16 px-2 py-1.5 text-center text-sm font-bold uppercase bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                  />
+                  <input
+                    :value="s.expansion"
+                    @input="settingsStore.updateMealShortcut(s.id, { expansion: $event.target.value })"
+                    placeholder="Taco Tuesday"
+                    class="flex-1 min-w-0 px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                  />
+                  <button
+                    @click="settingsStore.removeMealShortcut(s.id)"
+                    class="p-1 text-red-300 active:text-red-500 shrink-0"
+                    aria-label="Remove shortcut"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Recurring day picker — null + each day -->
+                <div class="flex flex-wrap gap-1 items-center">
+                  <span class="text-[10px] text-gray-400 mr-1">Recur:</span>
+                  <button
+                    @click="settingsStore.updateMealShortcut(s.id, { recurringDay: null })"
+                    class="text-[10px] px-2 py-0.5 rounded-full transition-colors"
+                    :class="!s.recurringDay ? 'bg-gray-300 text-white font-semibold' : 'bg-white text-gray-500 border border-gray-200'"
+                  >Off</button>
+                  <button
+                    v-for="d in SHORTCUT_DAY_KEYS"
+                    :key="d"
+                    @click="settingsStore.updateMealShortcut(s.id, { recurringDay: d })"
+                    class="text-[10px] px-2 py-0.5 rounded-full transition-colors"
+                    :class="s.recurringDay === d ? 'bg-primary-500 text-white font-semibold' : 'bg-white text-gray-500 border border-gray-200'"
+                  >{{ SHORTCUT_DAY_SHORT[d] }}</button>
+                </div>
+
+                <!-- Recurring slot picker (only relevant when recurring is on) -->
+                <div v-if="s.recurringDay" class="flex flex-wrap gap-1 items-center">
+                  <span class="text-[10px] text-gray-400 mr-1">Slot:</span>
+                  <button
+                    v-for="slt in SHORTCUT_SLOTS"
+                    :key="slt"
+                    @click="settingsStore.updateMealShortcut(s.id, { recurringSlot: slt })"
+                    class="text-[10px] px-2 py-0.5 rounded-full transition-colors capitalize"
+                    :class="s.recurringSlot === slt ? 'bg-primary-500 text-white font-semibold' : 'bg-white text-gray-500 border border-gray-200'"
+                  >{{ SHORTCUT_SLOT_LABEL[slt] }} · {{ slt }}</button>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-[11px] text-gray-400 italic text-center py-2 mb-3">No shortcuts yet. Add one below.</p>
+
+            <!-- Add new shortcut -->
+            <div class="bg-surface-muted rounded-xl p-2.5 space-y-2">
+              <div class="flex gap-2">
+                <input
+                  v-model="newShortcut.abbreviation"
+                  type="text"
+                  placeholder="TT"
+                  maxlength="6"
+                  class="w-16 px-2 py-2 text-center text-sm font-bold uppercase bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                  @input="shortcutDuplicateWarning = false"
+                />
+                <input
+                  v-model="newShortcut.expansion"
+                  type="text"
+                  placeholder="Full meal text..."
+                  class="flex-1 min-w-0 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                  @keydown.enter.prevent="addShortcut"
+                />
+              </div>
+              <button
+                @click="addShortcut"
+                class="w-full py-2 bg-primary-500 text-white rounded-lg text-sm font-medium active:scale-[0.98] transition-transform"
+              >
+                Add Shortcut
+              </button>
+              <p v-if="shortcutDuplicateWarning" class="text-amber-500 text-xs">A shortcut with that abbreviation already exists</p>
+            </div>
           </div>
 
           <!-- Tab: Flagged Ingredients -->
