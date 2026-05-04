@@ -24,7 +24,21 @@ export const useSettingsStore = defineStore('settings', {
 
     flaggedIngredients: [...DEFAULT_FLAGGED_KEYWORDS],
 
-    cleanifyRules: DEFAULT_CLEANIFY_RULES.map((r) => ({ ...r }))
+    cleanifyRules: DEFAULT_CLEANIFY_RULES.map((r) => ({ ...r })),
+
+    /**
+     * Recipe categories — editable list. Order is the display order in the
+     * Library filter chips (with the "All" pseudo-chip rendered at the end).
+     * `value` is stored on each meal record; `label` is what users see.
+     */
+    categories: [
+      { value: 'breakfast', label: 'Breakfast' },
+      { value: 'lunch', label: 'Lunch' },
+      { value: 'dinner', label: 'Dinner' },
+      { value: 'snack', label: 'Snack' },
+      { value: 'dessert', label: 'Dessert' },
+      { value: 'drink', label: 'Drink' }
+    ]
   }),
 
   getters: {
@@ -144,13 +158,43 @@ export const useSettingsStore = defineStore('settings', {
       this._syncSettings()
     },
 
+    /** Add a custom recipe category. Returns true if added, false if duplicate. */
+    addCategory(label) {
+      const trimmed = (label || '').trim()
+      if (!trimmed) return false
+      const value = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '')
+      if (!value) return false
+      if (this.categories.some((c) => c.value === value)) return false
+      this.categories.push({ value, label: trimmed })
+      this._syncSettings()
+      return true
+    },
+
+    /** Remove a category by value */
+    removeCategory(value) {
+      this.categories = this.categories.filter((c) => c.value !== value)
+      this._syncSettings()
+    },
+
+    /** Move a category up (-1) or down (+1) in the list */
+    moveCategory(value, direction) {
+      const idx = this.categories.findIndex((c) => c.value === value)
+      if (idx === -1) return
+      const newIdx = idx + direction
+      if (newIdx < 0 || newIdx >= this.categories.length) return
+      const [item] = this.categories.splice(idx, 1)
+      this.categories.splice(newIdx, 0, item)
+      this._syncSettings()
+    },
+
     _syncSettings() {
       try {
         useSync().queueChange('settings_upsert', {
           codes: this.codes,
           assignments: this.assignments,
           flaggedIngredients: this.flaggedIngredients,
-          cleanifyRules: this.cleanifyRules
+          cleanifyRules: this.cleanifyRules,
+          categories: this.categories
         })
       } catch (e) {
         console.warn('[settings] sync queue failed:', e)

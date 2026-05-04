@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMealStore } from '../stores/meals'
 import { usePlannerStore } from '../stores/planner'
 import { useIdeasStore } from '../stores/ideas'
+import { useSettingsStore } from '../stores/settings'
 import axios from 'axios'
 
 const route = useRoute()
@@ -11,13 +12,14 @@ const router = useRouter()
 const mealStore = useMealStore()
 const plannerStore = usePlannerStore()
 const ideasStore = useIdeasStore()
+const settingsStore = useSettingsStore()
 
 // If we arrived from the planner's MealPicker, these will be set
 const plannerDay = route.query.plannerDay || null
 const plannerSlot = route.query.plannerSlot || null
 
 const isEdit = computed(() => !!route.params.id)
-const pageTitle = computed(() => (isEdit.value ? 'Edit Meal' : 'Add Meal'))
+const pageTitle = computed(() => (isEdit.value ? 'Edit Recipe' : 'Add Recipe'))
 
 const form = ref({
   name: '',
@@ -164,14 +166,8 @@ function save() {
   }
 }
 
-const categories = [
-  { value: 'breakfast', label: 'Breakfast' },
-  { value: 'lunch', label: 'Lunch' },
-  { value: 'dinner', label: 'Dinner' },
-  { value: 'snack', label: 'Snack' },
-  { value: 'dessert', label: 'Dessert' },
-  { value: 'drink', label: 'Drink' }
-]
+// Categories pulled from settings — user-editable list in Settings → Categories
+const categories = computed(() => settingsStore.categories)
 </script>
 
 <template>
@@ -192,7 +188,7 @@ const categories = [
     <div class="space-y-5">
       <!-- Name -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Meal Name *</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Recipe Name *</label>
         <input
           id="meal-name-input"
           v-model="form.name"
@@ -359,7 +355,7 @@ const categories = [
         @click="save"
         class="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold text-base shadow-sm active:scale-[0.98] transition-transform"
       >
-        {{ isEdit ? 'Save Changes' : 'Add Meal' }}
+        {{ isEdit ? 'Save Changes' : 'Add Recipe' }}
       </button>
     </div>
   </div>

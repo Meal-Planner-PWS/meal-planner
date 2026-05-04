@@ -123,7 +123,7 @@ const categoryColors = {
           :to="`/library/${meal.id}/edit`"
           class="flex-1 py-3 bg-primary-500 text-white rounded-xl font-semibold text-center text-sm active:scale-[0.98] transition-transform"
         >
-          Edit Meal
+          Edit Recipe
         </router-link>
         <button
           @click="confirmDelete"
@@ -142,8 +142,8 @@ const categoryColors = {
         @click.self="showDeleteConfirm = false"
       >
         <div class="bg-white rounded-2xl w-full max-w-sm p-5 mb-[env(safe-area-inset-bottom)]">
-          <h3 class="text-lg font-bold text-gray-800 mb-2">Delete Meal?</h3>
-          <p class="text-sm text-gray-500 mb-5">This will permanently remove "{{ meal.name }}" from your library.</p>
+          <h3 class="text-lg font-bold text-gray-800 mb-2">Delete Recipe?</h3>
+          <p class="text-sm text-gray-500 mb-5">This will permanently remove "{{ meal.name }}" from your recipe library.</p>
           <div class="flex gap-3">
             <button
               @click="showDeleteConfirm = false"

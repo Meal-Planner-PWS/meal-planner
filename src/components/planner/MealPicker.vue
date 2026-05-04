@@ -122,7 +122,7 @@ function createNewMeal() {
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <span class="text-sm font-semibold text-primary-600">Create New Meal</span>
+              <span class="text-sm font-semibold text-primary-600">Add a New Recipe</span>
               <p class="text-xs text-primary-400 mt-0.5">Add a meal and assign it here</p>
             </div>
             <svg class="w-4 h-4 text-primary-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

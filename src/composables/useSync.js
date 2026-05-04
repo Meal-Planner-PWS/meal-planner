@@ -103,6 +103,9 @@ export function useSync() {
         if (Array.isArray(settingsRes.data.cleanify_rules) && settingsRes.data.cleanify_rules.length > 0) {
           settingsStore.cleanifyRules = settingsRes.data.cleanify_rules
         }
+        if (Array.isArray(settingsRes.data.categories) && settingsRes.data.categories.length > 0) {
+          settingsStore.categories = settingsRes.data.categories
+        }
       }
 
       lastSyncError.value = null

@@ -16,10 +16,25 @@ const settingsStore = useSettingsStore()
 const activeTab = ref(props.defaultTab)
 const TABS = [
   { key: 'codes', label: 'Meal Codes' },
+  { key: 'categories', label: 'Categories' },
   { key: 'ingredients', label: 'Ingredients' },
   { key: 'cleanify', label: 'Cleanify' },
   { key: 'support', label: 'Support' }
 ]
+
+// --- Categories state ---
+const newCategoryLabel = ref('')
+const categoryDuplicateWarning = ref(false)
+
+function addCategory() {
+  categoryDuplicateWarning.value = false
+  const added = settingsStore.addCategory(newCategoryLabel.value)
+  if (!added) {
+    categoryDuplicateWarning.value = true
+    return
+  }
+  newCategoryLabel.value = ''
+}
 
 // --- Support / mailto link ---
 const SUPPORT_EMAIL = 'eric@ericphifer.tech'
@@ -307,6 +322,70 @@ function codeFontColor(bgColor) {
             </div>
             <p class="text-[10px] text-gray-400 mt-2 text-center">Tap a cell to cycle through codes</p>
           </div>
+          </div>
+
+          <!-- Tab: Categories -->
+          <div v-if="activeTab === 'categories'">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Recipe Categories</h3>
+            <p class="text-[10px] text-gray-400 mb-3">Reorder, add, or remove categories used in the Recipe Library</p>
+
+            <div class="space-y-1.5 mb-3">
+              <div
+                v-for="(cat, idx) in settingsStore.categories"
+                :key="cat.value"
+                class="flex items-center gap-2 bg-surface-muted rounded-lg px-3 py-2"
+              >
+                <span class="text-sm text-gray-700 flex-1 truncate">{{ cat.label }}</span>
+                <button
+                  @click="settingsStore.moveCategory(cat.value, -1)"
+                  :disabled="idx === 0"
+                  class="p-1 text-gray-400 active:text-primary-500 disabled:opacity-30"
+                  aria-label="Move up"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  @click="settingsStore.moveCategory(cat.value, 1)"
+                  :disabled="idx === settingsStore.categories.length - 1"
+                  class="p-1 text-gray-400 active:text-primary-500 disabled:opacity-30"
+                  aria-label="Move down"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <button
+                  @click="settingsStore.removeCategory(cat.value)"
+                  class="p-1 text-red-300 active:text-red-500"
+                  aria-label="Remove"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex gap-2 mb-1">
+              <input
+                v-model="newCategoryLabel"
+                type="text"
+                placeholder="New category..."
+                class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                @keydown.enter.prevent="addCategory"
+                @input="categoryDuplicateWarning = false"
+              />
+              <button
+                @click="addCategory"
+                class="px-3 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium shrink-0 active:scale-95 transition-transform"
+              >
+                Add
+              </button>
+            </div>
+            <p v-if="categoryDuplicateWarning" class="text-amber-500 text-xs">A category with that name already exists</p>
+            <p class="text-[10px] text-gray-400 mt-3">"All" is shown automatically at the end of the filter list and can't be edited.</p>
           </div>
 
           <!-- Tab: Flagged Ingredients -->

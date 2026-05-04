@@ -122,6 +122,12 @@ export async function handler(event) {
             args: ['cleanify_rules', JSON.stringify(item.data.cleanifyRules)]
           })
         }
+        if (item.data.categories !== undefined) {
+          statements.push({
+            sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+            args: ['categories', JSON.stringify(item.data.categories)]
+          })
+        }
       }
     }
 

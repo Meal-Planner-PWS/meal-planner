@@ -75,6 +75,13 @@ async function saveSettings(data) {
     })
   }
 
+  if (data.categories !== undefined) {
+    statements.push({
+      sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      args: ['categories', JSON.stringify(data.categories)]
+    })
+  }
+
   if (statements.length > 0) {
     await db.batch(statements)
   }

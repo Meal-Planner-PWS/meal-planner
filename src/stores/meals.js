@@ -52,8 +52,11 @@ export const useMealStore = defineStore('meals', {
       })
     },
 
-    /** Filtered + sorted meals for the library view */
-    filteredMeals: (state) => (search, category, favoritesOnly) => {
+    /**
+     * Filtered + sorted meals for the library view.
+     * sort: 'recent' (default) | 'name_asc' | 'name_desc' | 'prep_asc' | 'fav_first'
+     */
+    filteredMeals: (state) => (search, category, favoritesOnly, sort = 'recent') => {
       let result = [...state.meals]
 
       if (favoritesOnly) {
@@ -69,15 +72,30 @@ export const useMealStore = defineStore('meals', {
         result = result.filter(
           (m) =>
             m.name.toLowerCase().includes(q) ||
-            m.ingredients.some((i) => i.toLowerCase().includes(q))
+            (m.ingredients || []).some((i) => i.toLowerCase().includes(q))
         )
       }
 
-      // Favorites bubble to top, then alphabetical
-      return result.sort((a, b) => {
-        if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1
-        return a.name.localeCompare(b.name)
-      })
+      const byName = (a, b) => a.name.localeCompare(b.name)
+      const byPrep = (a, b) => (a.prepTime ?? Infinity) - (b.prepTime ?? Infinity)
+      const byUpdated = (a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')
+
+      switch (sort) {
+        case 'name_asc':
+          return result.sort(byName)
+        case 'name_desc':
+          return result.sort((a, b) => -byName(a, b))
+        case 'prep_asc':
+          return result.sort(byPrep)
+        case 'fav_first':
+          return result.sort((a, b) => {
+            if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1
+            return byName(a, b)
+          })
+        case 'recent':
+        default:
+          return result.sort(byUpdated)
+      }
     }
   },
 
