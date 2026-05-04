@@ -38,19 +38,7 @@ const displayText = computed(() => {
   return linkedRecipes.value.map((r) => r.name).join(' + ')
 })
 
-const codeForSlot = computed(() => settingsStore.getCodeForSlot(props.day, props.slot))
-
 const slotInitial = { breakfast: 'B', lunch: 'L', dinner: 'D' }
-
-function codeFontColor(bgColor) {
-  if (!bgColor) return '#fff'
-  const hex = bgColor.replace('#', '')
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.6 ? '#1f2937' : '#ffffff'
-}
 
 function handleTap() {
   if (props.swapMode) {
@@ -110,16 +98,10 @@ function handlePointerDown(e) {
 
     <!-- Filled state — meal text is the dominant element -->
     <div v-else class="flex items-start gap-2.5">
-      <!-- Left rail: B/L/D label and code badge stacked -->
-      <div class="flex flex-col items-center gap-1.5 shrink-0 pt-0.5">
+      <!-- Left rail: B/L/D label only — meal codes are managed in Settings
+           and intentionally not rendered on the slot itself -->
+      <div class="flex flex-col items-center shrink-0 pt-0.5 w-5">
         <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ slotInitial[slot] }}</span>
-        <span
-          v-if="codeForSlot"
-          class="w-5 h-5 rounded-full flex items-center justify-center"
-          :style="{ backgroundColor: codeForSlot.color, color: codeFontColor(codeForSlot.color) }"
-        >
-          <span class="text-[10px] font-bold leading-none">{{ codeForSlot.letter }}</span>
-        </span>
       </div>
 
       <!-- Main: meal text large + helper dots + linked recipe chips -->
