@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useMealStore } from '../stores/meals'
 import { useSettingsStore } from '../stores/settings'
 import MealCard from '../components/library/MealCard.vue'
@@ -7,15 +7,23 @@ import MealCard from '../components/library/MealCard.vue'
 const mealStore = useMealStore()
 const settingsStore = useSettingsStore()
 
+// Persisted UI prefs
+const SORT_KEY = 'mp_library_sort'
+const CATEGORY_KEY = 'mp_library_category'
+
 const search = ref('')
-const activeCategory = ref('all')
+const activeCategory = ref(localStorage.getItem(CATEGORY_KEY) || 'all')
 const favoritesOnly = ref(false)
-const sort = ref('recent')
+const sort = ref(localStorage.getItem(SORT_KEY) || 'name_asc')
+
+// Persist on change
+watch(sort, (v) => localStorage.setItem(SORT_KEY, v))
+watch(activeCategory, (v) => localStorage.setItem(CATEGORY_KEY, v))
 
 const SORT_OPTIONS = [
-  { value: 'recent', label: 'Recently Added' },
   { value: 'name_asc', label: 'Name (A–Z)' },
   { value: 'name_desc', label: 'Name (Z–A)' },
+  { value: 'recent', label: 'Recently Added' },
   { value: 'prep_asc', label: 'Prep Time' },
   { value: 'fav_first', label: 'Favorites First' }
 ]

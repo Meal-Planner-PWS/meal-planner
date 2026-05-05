@@ -40,6 +40,20 @@ const displayText = computed(() => {
 
 const slotInitial = { breakfast: 'B', lunch: 'L', dinner: 'D' }
 
+// Meal code badge — null unless the user has explicitly assigned a code to this
+// day/slot via Settings → Meal Codes. No defaults; planner stays clean otherwise.
+const codeForSlot = computed(() => settingsStore.getCodeForSlot(props.day, props.slot))
+
+function codeFontColor(bgColor) {
+  if (!bgColor) return '#fff'
+  const hex = bgColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#1f2937' : '#ffffff'
+}
+
 function handleTap() {
   if (props.swapMode) {
     if (!props.isSwapSource) emit('swap-target', { day: props.day, slot: props.slot })
@@ -98,10 +112,16 @@ function handlePointerDown(e) {
 
     <!-- Filled state — meal text is the dominant element -->
     <div v-else class="flex items-start gap-2.5">
-      <!-- Left rail: B/L/D label only — meal codes are managed in Settings
-           and intentionally not rendered on the slot itself -->
-      <div class="flex flex-col items-center shrink-0 pt-0.5 w-5">
+      <!-- Left rail: B/L/D label + optional meal-code badge (only when manually assigned) -->
+      <div class="flex flex-col items-center gap-1.5 shrink-0 pt-0.5 w-5">
         <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ slotInitial[slot] }}</span>
+        <span
+          v-if="codeForSlot"
+          class="w-5 h-5 rounded-full flex items-center justify-center"
+          :style="{ backgroundColor: codeForSlot.color, color: codeFontColor(codeForSlot.color) }"
+        >
+          <span class="text-[10px] font-bold leading-none">{{ codeForSlot.letter }}</span>
+        </span>
       </div>
 
       <!-- Main: meal text large + helper dots + linked recipe chips -->
@@ -132,15 +152,16 @@ function handlePointerDown(e) {
         </div>
       </div>
 
-      <!-- Action rail: clear + options -->
+      <!-- Action rail: clear + options. Clear (×) is sized up + colored red so accidental
+           additions can be removed in one tap without opening the options menu. -->
       <div v-if="!swapMode" class="flex items-center gap-1 shrink-0">
         <button
           @click="handleClear"
-          class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 active:text-red-400 active:bg-red-50"
-          aria-label="Clear meal"
+          class="w-11 h-11 flex items-center justify-center rounded-lg bg-red-50 text-red-500 active:bg-red-100 active:scale-95 transition-transform"
+          aria-label="Remove meal"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
         <button

@@ -12,14 +12,20 @@ export const useSettingsStore = defineStore('settings', {
       { letter: 'A', color: '#95A5A6', label: 'Grey' }
     ],
 
+    /**
+     * Per-day-slot meal code assignments. Empty by default — codes are only
+     * shown on the planner when the user has manually assigned one.
+     * Shape preserved so the Settings → Meal Codes tab still works to
+     * assign codes to specific slots when desired.
+     */
     assignments: {
-      monday:    { breakfast: 'R', lunch: 'S', dinner: 'R' },
-      tuesday:   { breakfast: 'R', lunch: 'S', dinner: 'R' },
-      wednesday: { breakfast: 'F', lunch: 'S', dinner: 'F' },
-      thursday:  { breakfast: 'F', lunch: 'R', dinner: 'F' },
-      friday:    { breakfast: 'R', lunch: 'F', dinner: 'R' },
-      saturday:  { breakfast: 'A', lunch: 'A', dinner: 'A' },
-      sunday:    { breakfast: 'F', lunch: 'F', dinner: 'S' }
+      monday:    { breakfast: null, lunch: null, dinner: null },
+      tuesday:   { breakfast: null, lunch: null, dinner: null },
+      wednesday: { breakfast: null, lunch: null, dinner: null },
+      thursday:  { breakfast: null, lunch: null, dinner: null },
+      friday:    { breakfast: null, lunch: null, dinner: null },
+      saturday:  { breakfast: null, lunch: null, dinner: null },
+      sunday:    { breakfast: null, lunch: null, dinner: null }
     },
 
     flaggedIngredients: [...DEFAULT_FLAGGED_KEYWORDS],

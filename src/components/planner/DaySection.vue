@@ -135,9 +135,6 @@ function commitNotes() {
         >
           {{ item.task.text }}
         </span>
-        <span v-if="item.mealText" class="text-[10px] text-amber-500 truncate max-w-[40%]">
-          for {{ item.mealText }}
-        </span>
       </button>
     </div>
 

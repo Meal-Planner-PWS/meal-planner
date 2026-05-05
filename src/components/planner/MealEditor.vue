@@ -138,7 +138,7 @@ function createNewRecipe() {
             <textarea
               v-model="text"
               rows="2"
-              placeholder="e.g. Sheet pan chicken & veggies"
+              placeholder="What's the meal?"
               class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
               autofocus
             />

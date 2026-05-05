@@ -569,15 +569,15 @@ function codeFontColor(bgColor) {
             <p class="text-[10px] text-gray-400 mb-1">Recipes containing these ingredients will be marked Review in New Ideas</p>
             <p class="text-xs italic text-gray-400 mb-3">It does when it's being cooked by a sixty-watt bulb.</p>
 
-            <!-- Grouped list -->
+            <!-- Grouped list — horizontal scroll per category so long lists don't overflow off-screen -->
             <div class="space-y-3 mb-3">
               <div v-for="(items, category) in groupedFlagged" :key="category">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-300 mb-1">{{ category }}</p>
-                <div class="flex flex-wrap gap-1.5">
+                <div class="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
                   <span
                     v-for="keyword in items"
                     :key="keyword"
-                    class="inline-flex items-center gap-1 bg-surface-muted text-gray-600 px-2.5 py-1 rounded-full text-xs"
+                    class="inline-flex items-center gap-1 bg-surface-muted text-gray-600 px-2.5 py-1 rounded-full text-xs whitespace-nowrap shrink-0"
                   >
                     {{ keyword }}
                     <button
