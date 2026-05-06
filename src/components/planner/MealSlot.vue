@@ -152,18 +152,8 @@ function handlePointerDown(e) {
         </div>
       </div>
 
-      <!-- Action rail: clear + options. Clear (×) is sized up + colored red so accidental
-           additions can be removed in one tap without opening the options menu. -->
-      <div v-if="!swapMode" class="flex items-center gap-1 shrink-0">
-        <button
-          @click="handleClear"
-          class="w-11 h-11 flex items-center justify-center rounded-lg bg-red-50 text-red-500 active:bg-red-100 active:scale-95 transition-transform"
-          aria-label="Remove meal"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+      <!-- Action rail: options menu only. Clear is available inside the menu. -->
+      <div v-if="!swapMode" class="flex items-center shrink-0">
         <button
           @click="handleSlotAction"
           class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-300 active:text-gray-500 active:bg-gray-100"
