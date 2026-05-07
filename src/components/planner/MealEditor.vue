@@ -195,7 +195,7 @@ function createNewRecipe() {
                 <input
                   v-model="recipeSearch"
                   type="text"
-                  placeholder="Search recipes..."
+                  placeholder=""
                   class="w-full pl-9 pr-3 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                 />
               </div>
@@ -294,7 +294,7 @@ function createNewRecipe() {
               <input
                 v-model="newPrepText"
                 type="text"
-                placeholder="e.g. Marinate chicken"
+                placeholder=""
                 class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                 @keydown.enter.prevent="addPrepTask"
               />

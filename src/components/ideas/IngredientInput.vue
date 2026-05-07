@@ -38,7 +38,7 @@ function handleKeydown(e) {
       <input
         v-model="input"
         type="text"
-        placeholder="e.g. chicken, rice, broccoli"
+        placeholder=""
         class="flex-1 px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
         @keydown.enter.prevent="handleAdd"
         @keydown="handleKeydown"

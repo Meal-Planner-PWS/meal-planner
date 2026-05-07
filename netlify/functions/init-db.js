@@ -1,5 +1,6 @@
-// Run once via: netlify functions:invoke init-db
-// Creates all three tables in Turso if they don't exist.
+// Run via: curl -X POST https://<site>/.netlify/functions/init-db
+// Idempotent: creates missing tables AND adds any missing columns to existing tables.
+// Safe to re-run after every deploy.
 
 import { createClient } from '@libsql/client'
 
@@ -15,12 +16,23 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json'
 }
 
+/** Add a column if it doesn't already exist. Returns true if added. */
+async function ensureColumn(table, column, definition) {
+  const info = await db.execute(`PRAGMA table_info(${table})`)
+  const exists = info.rows.some((r) => r.name === column)
+  if (exists) return false
+  await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  return true
+}
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS_HEADERS, body: '' }
   }
 
+  const log = []
   try {
+    // 1. Create tables if missing
     await db.batch([
       `CREATE TABLE IF NOT EXISTS meals (
         id TEXT PRIMARY KEY,
@@ -40,8 +52,8 @@ export async function handler(event) {
         week_start TEXT NOT NULL,
         day TEXT NOT NULL,
         slot_type TEXT NOT NULL,
-        meal_ids TEXT NOT NULL DEFAULT '[]',           -- legacy: array of recipe IDs
-        entry_data TEXT NOT NULL DEFAULT '',           -- new: JSON-encoded MealEntry
+        meal_ids TEXT NOT NULL DEFAULT '[]',
+        entry_data TEXT NOT NULL DEFAULT '',
         updated_at TEXT NOT NULL,
         PRIMARY KEY (week_start, day, slot_type)
       )`,
@@ -68,17 +80,28 @@ export async function handler(event) {
         value TEXT NOT NULL
       )`
     ])
+    log.push('tables ensured')
+
+    // 2. Backfill columns added in later phases. Each call is idempotent.
+    const columnMigrations = [
+      { table: 'meals',      column: 'prep_time',  def: 'INTEGER' },
+      { table: 'week_plans', column: 'entry_data', def: "TEXT NOT NULL DEFAULT ''" }
+    ]
+    for (const m of columnMigrations) {
+      const added = await ensureColumn(m.table, m.column, m.def)
+      log.push(`${m.table}.${m.column}: ${added ? 'ADDED' : 'already present'}`)
+    }
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ success: true, message: 'All tables created successfully' })
+      body: JSON.stringify({ success: true, log })
     }
   } catch (err) {
     return {
       statusCode: 500,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: err.message, log })
     }
   }
 }

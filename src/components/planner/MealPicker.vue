@@ -102,7 +102,7 @@ function createNewMeal() {
             <input
               v-model="search"
               type="text"
-              placeholder="Search meals..."
+              placeholder=""
               class="w-full pl-10 pr-4 py-2.5 bg-surface-muted rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
               autofocus
             />

@@ -404,7 +404,7 @@ function codeFontColor(bgColor) {
               <input
                 v-model="newCategoryLabel"
                 type="text"
-                placeholder="New category..."
+                placeholder=""
                 class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                 @keydown.enter.prevent="addCategory"
                 @input="categoryDuplicateWarning = false"
@@ -482,13 +482,13 @@ function codeFontColor(bgColor) {
                   <input
                     :value="s.abbreviation"
                     @input="settingsStore.updateMealShortcut(s.id, { abbreviation: $event.target.value })"
-                    placeholder="TT"
+                    placeholder=""
                     class="w-16 px-2 py-1.5 text-center text-sm font-bold uppercase bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
                   />
                   <input
                     :value="s.expansion"
                     @input="settingsStore.updateMealShortcut(s.id, { expansion: $event.target.value })"
-                    placeholder="Taco Tuesday"
+                    placeholder=""
                     class="flex-1 min-w-0 px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30"
                   />
                   <button
@@ -540,7 +540,7 @@ function codeFontColor(bgColor) {
                 <input
                   v-model="newShortcut.abbreviation"
                   type="text"
-                  placeholder="TT"
+                  placeholder=""
                   maxlength="6"
                   class="w-16 px-2 py-2 text-center text-sm font-bold uppercase bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
                   @input="shortcutDuplicateWarning = false"
@@ -548,7 +548,7 @@ function codeFontColor(bgColor) {
                 <input
                   v-model="newShortcut.expansion"
                   type="text"
-                  placeholder="Full meal text..."
+                  placeholder=""
                   class="flex-1 min-w-0 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30"
                   @keydown.enter.prevent="addShortcut"
                 />
@@ -598,7 +598,7 @@ function codeFontColor(bgColor) {
               <input
                 v-model="newIngredient"
                 type="text"
-                placeholder="Add ingredient keyword..."
+                placeholder=""
                 class="flex-1 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                 @keydown.enter.prevent="addIngredient"
                 @input="duplicateWarning = false"
@@ -677,7 +677,7 @@ function codeFontColor(bgColor) {
                 <input
                   v-model="newRuleFrom"
                   type="text"
-                  placeholder="Replace..."
+                  placeholder=""
                   class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                   @input="ruleDuplicateWarning = false"
                 />
@@ -685,7 +685,7 @@ function codeFontColor(bgColor) {
                 <input
                   v-model="newRuleTo"
                   type="text"
-                  placeholder="..."
+                  placeholder=""
                   class="flex-1 min-w-0 px-3 py-2 bg-surface-card rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                   @keydown.enter.prevent="addRule"
                   @input="ruleDuplicateWarning = false"

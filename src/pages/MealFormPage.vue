@@ -193,7 +193,7 @@ const categories = computed(() => settingsStore.categories)
           id="meal-name-input"
           v-model="form.name"
           type="text"
-          placeholder="e.g. Chicken Stir Fry"
+          placeholder=""
           class="w-full px-4 py-3 bg-surface-card rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
           :class="nameError ? 'border-red-400 ring-2 ring-red-400/30' : 'border-gray-200'"
           @input="nameError = false"
@@ -270,7 +270,7 @@ const categories = computed(() => settingsStore.categories)
           <input
             v-model="ingredientInput"
             type="text"
-            placeholder="Type ingredient + Enter"
+            placeholder=""
             class="flex-1 px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
             @keydown.enter.prevent="addIngredient"
           />
@@ -308,7 +308,7 @@ const categories = computed(() => settingsStore.categories)
         <textarea
           v-model="form.instructions"
           rows="5"
-          placeholder="Step-by-step instructions..."
+          placeholder=""
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
         />
       </div>
@@ -320,7 +320,7 @@ const categories = computed(() => settingsStore.categories)
           v-model="form.sourceUrl"
           type="text"
           inputmode="url"
-          placeholder="https://..."
+          placeholder=""
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
         />
       </div>
@@ -331,7 +331,7 @@ const categories = computed(() => settingsStore.categories)
         <textarea
           v-model="form.notes"
           rows="3"
-          placeholder="Any extra notes..."
+          placeholder=""
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 resize-none"
         />
       </div>
@@ -344,7 +344,7 @@ const categories = computed(() => settingsStore.categories)
           type="number"
           inputmode="numeric"
           min="0"
-          placeholder="e.g. 30"
+          placeholder=""
           class="w-full px-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
         />
       </div>

@@ -76,7 +76,7 @@ function selectCategory(cat) {
           <input
             v-model="search"
             type="text"
-            placeholder="Search recipes or ingredients..."
+            placeholder=""
             class="w-full pl-10 pr-4 py-3 bg-surface-card rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
           />
         </div>

@@ -200,7 +200,7 @@ function commitNotes() {
       <textarea
         v-model="localNotes"
         rows="1"
-        placeholder="Notes for this day..."
+        placeholder=""
         class="w-full mt-1 px-3 py-1.5 bg-transparent border-0 border-t border-gray-100 text-xs text-gray-500 placeholder-gray-300 focus:outline-none focus:bg-amber-50/30 resize-none"
         @blur="commitNotes"
       />
