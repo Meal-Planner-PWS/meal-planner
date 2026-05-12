@@ -79,19 +79,29 @@ export async function handler(event) {
       }
     }
 
-    // Process day notes upserts
+    // Process day upserts (notes + prep tasks). Coalesces multiple updates per day.
+    const dayMap = new Map()
     for (const item of dayNotes) {
-      if (item.action === 'upsert' && item.data) {
-        const d = item.data
-        statements.push({
-          sql: `INSERT OR REPLACE INTO day_notes (week_start, day, notes, updated_at)
-                VALUES (?, ?, ?, ?)`,
-          args: [
-            d.weekStart, d.day, d.notes || '',
-            d.updatedAt || new Date().toISOString()
-          ]
-        })
-      }
+      if (item.action !== 'upsert' || !item.data) continue
+      const d = item.data
+      const key = `${d.weekStart}|${d.day}`
+      const existing = dayMap.get(key) || { weekStart: d.weekStart, day: d.day, notes: '', prepTasks: [], updatedAt: '' }
+      // Latest wins for each field present
+      if ('notes' in d) existing.notes = d.notes || ''
+      if ('prepTasks' in d) existing.prepTasks = d.prepTasks || []
+      existing.updatedAt = d.updatedAt || new Date().toISOString()
+      dayMap.set(key, existing)
+    }
+    for (const d of dayMap.values()) {
+      statements.push({
+        sql: `INSERT OR REPLACE INTO day_notes (week_start, day, notes, prep_tasks, updated_at)
+              VALUES (?, ?, ?, ?, ?)`,
+        args: [
+          d.weekStart, d.day, d.notes,
+          JSON.stringify(d.prepTasks || []),
+          d.updatedAt
+        ]
+      })
     }
 
     // Process scan upserts and delete-all

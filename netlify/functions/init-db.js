@@ -61,6 +61,7 @@ export async function handler(event) {
         week_start TEXT NOT NULL,
         day TEXT NOT NULL,
         notes TEXT NOT NULL DEFAULT '',
+        prep_tasks TEXT NOT NULL DEFAULT '[]',
         updated_at TEXT NOT NULL,
         PRIMARY KEY (week_start, day)
       )`,
@@ -85,7 +86,8 @@ export async function handler(event) {
     // 2. Backfill columns added in later phases. Each call is idempotent.
     const columnMigrations = [
       { table: 'meals',      column: 'prep_time',  def: 'INTEGER' },
-      { table: 'week_plans', column: 'entry_data', def: "TEXT NOT NULL DEFAULT ''" }
+      { table: 'week_plans', column: 'entry_data', def: "TEXT NOT NULL DEFAULT ''" },
+      { table: 'day_notes',  column: 'prep_tasks', def: "TEXT NOT NULL DEFAULT '[]'" }
     ]
     for (const m of columnMigrations) {
       const added = await ensureColumn(m.table, m.column, m.def)

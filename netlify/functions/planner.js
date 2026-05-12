@@ -56,12 +56,17 @@ async function getWeek(weekStart) {
     }
   })
 
-  const notes = notesRes.rows.map((row) => ({
-    weekStart: row.week_start,
-    day: row.day,
-    notes: row.notes || '',
-    updatedAt: row.updated_at
-  }))
+  const notes = notesRes.rows.map((row) => {
+    let prepTasks = []
+    try { prepTasks = row.prep_tasks ? JSON.parse(row.prep_tasks) : [] } catch { prepTasks = [] }
+    return {
+      weekStart: row.week_start,
+      day: row.day,
+      notes: row.notes || '',
+      prepTasks,
+      updatedAt: row.updated_at
+    }
+  })
 
   return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ slots, notes }) }
 }

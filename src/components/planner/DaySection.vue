@@ -67,7 +67,7 @@ function isDragSource(slot) {
 const prepDueToday = computed(() => plannerStore.prepTasksByDay(props.day))
 
 function togglePrepDone(item) {
-  plannerStore.togglePrepTask(item.mealDay, item.mealSlot, item.task.id)
+  plannerStore.togglePrepTask(item.ownerDay, item.task.id)
 }
 
 const localNotes = ref(props.dayData.notes || '')

@@ -91,7 +91,10 @@ export function useSync() {
         }
         const notesArr = (plannerRes.data && plannerRes.data.notes) || []
         for (const n of notesArr) {
-          if (week.days[n.day]) week.days[n.day].notes = n.notes || ''
+          if (week.days[n.day]) {
+            week.days[n.day].notes = n.notes || ''
+            if (Array.isArray(n.prepTasks)) week.days[n.day].prepTasks = n.prepTasks
+          }
         }
       }
 
@@ -185,7 +188,8 @@ export function useSync() {
           case 'slot_delete':
             plannerSlots.push({ action: 'delete', ...item.data })
             break
-          case 'day_notes_upsert':
+          case 'day_notes_upsert': // legacy
+          case 'day_upsert':
             dayNotes.push({ action: 'upsert', data: item.data })
             break
           case 'scan_upsert':

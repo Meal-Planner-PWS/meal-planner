@@ -22,6 +22,8 @@ const settingsStore = useSettingsStore()
 
 // Working copy of the meal entry — committed on Save
 const initial = computed(() => plannerStore.currentWeek.days[props.day]?.[props.slot] || null)
+// Prep tasks live on the DAY (not the slot), so they stay put when meals are swapped.
+const initialPrep = computed(() => plannerStore.currentWeek.days[props.day]?.prepTasks || [])
 
 const text = ref('')
 const linkedRecipeIds = ref([])
@@ -37,9 +39,12 @@ watch(() => initial.value, (val) => {
   text.value = val?.text || ''
   linkedRecipeIds.value = [...(val?.recipeIds || [])]
   linkedHelperIds.value = [...(val?.helperIds || [])]
-  prepTasks.value = (val?.prepTasks || []).map((t) => ({ ...t }))
-  // Default new prep tasks to be due the day before the meal (or the meal day if it's Monday)
   newPrepDueDay.value = props.day
+}, { immediate: true })
+
+// Sync working copy of day-level prep tasks
+watch(() => initialPrep.value, (val) => {
+  prepTasks.value = (val || []).map((t) => ({ ...t }))
 }, { immediate: true })
 
 function toggleHelper(id) {
@@ -92,6 +97,8 @@ function unlinkRecipe(id) {
 }
 
 function save() {
+  // Commit prep tasks at the day level (independent of the meal entry)
+  plannerStore.setDayPrepTasks(props.day, prepTasks.value)
   plannerStore.setMeal(props.day, props.slot, {
     text: text.value,
     recipeIds: linkedRecipeIds.value,
